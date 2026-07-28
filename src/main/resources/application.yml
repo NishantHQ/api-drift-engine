@@ -51,8 +51,8 @@ spring:
 egress:
   proxy:
     connect-timeout-seconds: 10
-    read-timeout-seconds: 30
-    max-payload-size-bytes: 20971520  # 20 MB
+    read-timeout-seconds: 60
+    max-payload-size-bytes: 52428800  # 50 MB — some vendor specs (Stripe) are large
     # SSRF-blocked CIDR ranges (loopback, link-local, RFC 1918)
     blocked-subnets:
       - "127.0.0.0/8"
