@@ -3,6 +3,7 @@ package com.enterprise.apidrift.engine.rules;
 import com.enterprise.apidrift.dto.DetectedChange;
 import com.enterprise.apidrift.entity.ChangeSeverity;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -39,8 +40,8 @@ public class WebhookRuleEvaluator implements BreakingRule {
         JsonNode newWebhooks = findWebhooks(newNode);
 
         if (oldWebhooks == null && newWebhooks == null) return changes;
-        if (oldWebhooks == null) oldWebhooks = oldNode.objectNode();
-        if (newWebhooks == null) newWebhooks = newNode.objectNode();
+        if (oldWebhooks == null) oldWebhooks = JsonNodeFactory.instance.objectNode();
+        if (newWebhooks == null) newWebhooks = JsonNodeFactory.instance.objectNode();
 
         // Compare webhook event names
         Set<String> oldEvents = fieldNames(oldWebhooks);

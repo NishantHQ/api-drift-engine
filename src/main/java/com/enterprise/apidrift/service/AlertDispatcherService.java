@@ -58,7 +58,7 @@ public class AlertDispatcherService {
     /**
      * Dispatch alerts for the given changes. Async to avoid blocking the diff pipeline.
      */
-    @Async
+    @Async("alertExecutor")
     public void dispatchAlerts(VendorConfig vendor, List<DetectedChange> alertableChanges) {
         if (alertableChanges.isEmpty()) {
             log.info("No alertable changes for vendor {}", vendor.getVendorName());

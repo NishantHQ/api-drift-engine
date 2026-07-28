@@ -5,6 +5,7 @@ import com.enterprise.apidrift.engine.rules.BreakingRule;
 import com.enterprise.apidrift.engine.rules.RequestRuleEvaluator;
 import com.enterprise.apidrift.engine.rules.ResponseRuleEvaluator;
 import com.enterprise.apidrift.engine.rules.WebhookRuleEvaluator;
+import com.enterprise.apidrift.entity.ChangeSeverity;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
