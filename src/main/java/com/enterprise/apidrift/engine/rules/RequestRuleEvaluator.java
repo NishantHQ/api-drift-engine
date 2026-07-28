@@ -36,7 +36,7 @@ public class RequestRuleEvaluator implements BreakingRule {
         List<DetectedChange> changes = new ArrayList<>();
 
         // Evaluate parameter changes
-        changes.addAll(evaluateParameters(httpMethod, endpointPath, oldNode, newNode));
+        changes.addAll(evaluateParameters(httpMethod, endpointPath, oldNode, newNode, jsonPointer));
 
         // Evaluate request body changes
         changes.addAll(evaluateRequestBody(httpMethod, endpointPath, oldNode, newNode, jsonPointer));
@@ -45,7 +45,8 @@ public class RequestRuleEvaluator implements BreakingRule {
     }
 
     private List<DetectedChange> evaluateParameters(String httpMethod, String endpointPath,
-                                                     JsonNode oldNode, JsonNode newNode) {
+                                                     JsonNode oldNode, JsonNode newNode,
+                                                     String jsonPointer) {
         List<DetectedChange> results = new ArrayList<>();
         if (oldNode == null || newNode == null) return results;
 

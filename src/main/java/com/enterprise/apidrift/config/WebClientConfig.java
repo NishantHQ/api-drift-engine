@@ -1,7 +1,6 @@
 package com.enterprise.apidrift.config;
 
 import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.handler.timeout.ConnectTimeoutException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
