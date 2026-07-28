@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:apidrift;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+  quartz:
+    job-store-type: memory
+    jdbc:
+      initialize-schema: never
+
+egress:
+  proxy:
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 60
+    max-payload-size-bytes: 52428800
+
+encryption:
+  aes-key: dev-key-32-bytes-long-for-aes!
+
+alerts:
+  jira:
+    enabled: false
+  slack:
+    enabled: false
+  pagerduty:
+    enabled: false
