@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: api-drift-engine-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+  quartz:
+    job-store-type: memory
+
+egress:
+  proxy:
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 10
+    max-payload-size-bytes: 20971520
+    blocked-subnets:
+      - "127.0.0.0/8"
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+
+encryption:
+  aes-key: test-key-32-bytes-long-for-aes!
+
+alerts:
+  jira:
+    enabled: false
+  slack:
+    enabled: false
+  pagerduty:
+    enabled: false

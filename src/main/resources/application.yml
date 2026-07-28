@@ -1,0 +1,88 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-drift-engine
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/api_drift
+    username: ${DB_USERNAME:apidrift}
+    password: ${DB_PASSWORD:apidrift}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.batch_size: 25
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: always
+    properties:
+      org.quartz:
+        threadPool.threadCount: 4
+        scheduler.instanceName: ApiDriftScheduler
+
+  webflux:
+    webclient:
+      max-in-memory-size: 20MB
+
+# Egress Proxy Configuration
+egress:
+  proxy:
+    connect-timeout-seconds: 10
+    read-timeout-seconds: 30
+    max-payload-size-bytes: 20971520  # 20 MB
+    # SSRF-blocked CIDR ranges (loopback, link-local, RFC 1918)
+    blocked-subnets:
+      - "127.0.0.0/8"
+      - "0:0:0:0:0:0:0:1/128"
+      - "169.254.0.0/16"
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+      - "fc00::/7"
+      - "fe80::/10"
+
+# Encryption
+encryption:
+  aes-key: ${AES_ENCRYPTION_KEY:changeme-32byte-key-plaintext}  # Override via env var
+
+# Alert Dispatch
+alerts:
+  jira:
+    enabled: false
+    base-url: ${JIRA_BASE_URL:}
+    project-key: ${JIRA_PROJECT_KEY:APIDRIFT}
+    auth-token: ${JIRA_AUTH_TOKEN:}
+  slack:
+    enabled: false
+    webhook-url: ${SLACK_WEBHOOK_URL:}
+  pagerduty:
+    enabled: false
+    routing-key: ${PAGERDUTY_ROUTING_KEY:}
+
+# Management
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
