@@ -15,7 +15,6 @@ services:
     plan: free
     region: oregon
     healthCheckPath: /actuator/health
-    healthCheckTimeout: 10
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
