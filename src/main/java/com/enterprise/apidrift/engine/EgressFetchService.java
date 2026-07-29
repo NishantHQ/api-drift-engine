@@ -42,8 +42,8 @@ public class EgressFetchService {
      * @throws RuntimeException on fetch failure after all retries exhausted
      */
     public String fetchSpec(String url, String authHeader, Long vendorId) {
-        // Circuit breaker check
-        if (healthService.isCircuitOpen(vendorId)) {
+        // Circuit breaker check (skip if no vendor ID available, e.g. ad-hoc fetches)
+        if (vendorId != null && healthService.isCircuitOpen(vendorId)) {
             throw new RuntimeException(
                     "Circuit breaker open for vendor " + vendorId + " — skipping fetch");
         }
@@ -55,7 +55,9 @@ public class EgressFetchService {
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             try {
                 String body = doFetch(uri, authHeader);
-                healthService.recordSuccess(vendorId);
+                if (vendorId != null) {
+                    healthService.recordSuccess(vendorId);
+                }
                 log.info("Successfully fetched spec from {} ({} bytes) on attempt {}",
                         url, body != null ? body.length() : 0, attempt + 1);
                 return body;
@@ -63,7 +65,9 @@ public class EgressFetchService {
                 // SSRF violations are not retryable — fail immediately
                 throw e;
             } catch (Exception e) {
-                boolean shouldRetry = healthService.recordFailure(vendorId);
+                boolean shouldRetry = vendorId != null
+                        ? healthService.recordFailure(vendorId)
+                        : attempt < maxRetries;
                 if (!shouldRetry || attempt == maxRetries) {
                     log.error("Fetch failed for vendor {} after {} attempts: {}",
                             vendorId, attempt + 1, e.getMessage());

@@ -40,6 +40,9 @@ egress:
 encryption:
   aes-key: dev-key-32-bytes-long-for-aes!
 
+telemetry:
+  seed-mock-data: true   # Seed dev data when DB is empty (H2 only)
+
 alerts:
   batch-mode: true
   jira:

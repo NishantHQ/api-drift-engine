@@ -54,6 +54,9 @@ public class AlertDispatcherService {
     @Value("${alerts.batch-mode:true}")
     private boolean batchMode;
 
+    @Value("${alerts.ui-base-url:http://localhost:8080}")
+    private String uiBaseUrl;
+
     public AlertDispatcherService(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
     }
@@ -232,7 +235,7 @@ public class AlertDispatcherService {
                     color,
                     vendor.getVendorName(), payloads.size(), breaking,
                     "The following drift was detected in the latest spec poll:",
-                    "http://localhost:8080/api/v1/diffs/active/" + vendor.getId(),
+                    uiBaseUrl + "/api/v1/diffs/active/" + vendor.getId(),
                     fieldsJson.toString());
 
             webClient.post()

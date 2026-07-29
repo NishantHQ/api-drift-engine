@@ -2,6 +2,7 @@ package com.enterprise.apidrift.service;
 
 import com.enterprise.apidrift.entity.VendorHealthStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -21,15 +22,19 @@ public class VendorHealthService {
 
     private static final int MAX_RETRIES = 3;
     private static final long INITIAL_BACKOFF_MS = 1_000;
-    private static final int CIRCUIT_OPEN_THRESHOLD = 3;
-    private static final long COOLDOWN_MINUTES = 30;
+    static final int CIRCUIT_OPEN_THRESHOLD = 3;
+
+    @Value("${vendor-health.cooldown-minutes:30}")
+    private long cooldownMinutes = 30;
 
     private final Map<Long, VendorHealthState> states = new ConcurrentHashMap<>();
 
     /**
      * Returns the current health status for a vendor.
+     * Returns HEALTHY for null vendorId (e.g., ad-hoc fetches without a vendor record).
      */
     public VendorHealthStatus getStatus(Long vendorId) {
+        if (vendorId == null) return VendorHealthStatus.HEALTHY;
         VendorHealthState state = states.get(vendorId);
         if (state == null) return VendorHealthStatus.HEALTHY;
 
@@ -39,7 +44,7 @@ public class VendorHealthService {
                 long minutesSinceLastFailure = java.time.Duration
                         .between(state.lastFailureAt, OffsetDateTime.now())
                         .toMinutes();
-                if (minutesSinceLastFailure >= COOLDOWN_MINUTES) {
+                if (minutesSinceLastFailure >= cooldownMinutes) {
                     // Circuit half-opens
                     return VendorHealthStatus.DEGRADED;
                 }
@@ -56,6 +61,7 @@ public class VendorHealthService {
      * Whether the vendor should be skipped entirely (circuit open and in cooldown).
      */
     public boolean isCircuitOpen(Long vendorId) {
+        if (vendorId == null) return false;
         return getStatus(vendorId) == VendorHealthStatus.DOWN;
     }
 
@@ -63,6 +69,7 @@ public class VendorHealthService {
      * Record a successful fetch.
      */
     public void recordSuccess(Long vendorId) {
+        if (vendorId == null) return;
         VendorHealthState state = states.computeIfAbsent(vendorId, k -> new VendorHealthState());
         int previousFailures = state.consecutiveFailures;
         state.consecutiveFailures = 0;
@@ -78,6 +85,7 @@ public class VendorHealthService {
      * Record a failed fetch attempt. Returns true if retry should be attempted.
      */
     public boolean recordFailure(Long vendorId) {
+        if (vendorId == null) return true; // retry with no circuit tracking
         VendorHealthState state = states.computeIfAbsent(vendorId, k -> new VendorHealthState());
         state.consecutiveFailures++;
         state.totalFailures++;
@@ -85,7 +93,7 @@ public class VendorHealthService {
 
         if (state.consecutiveFailures >= CIRCUIT_OPEN_THRESHOLD) {
             log.warn("Vendor {} circuit OPEN — {} consecutive fetch failures, pausing for {} min",
-                    vendorId, state.consecutiveFailures, COOLDOWN_MINUTES);
+                    vendorId, state.consecutiveFailures, cooldownMinutes);
             return false; // stop retrying
         }
 
@@ -112,6 +120,7 @@ public class VendorHealthService {
      * Reset health for a vendor (e.g., after manual intervention).
      */
     public void reset(Long vendorId) {
+        if (vendorId == null) return;
         states.remove(vendorId);
         log.info("Vendor {} health state reset", vendorId);
     }
