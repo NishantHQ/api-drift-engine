@@ -70,6 +70,8 @@ encryption:
 
 # Alert Dispatch
 alerts:
+  batch-mode: true  # Aggregate changes into single Jira/Slack notification per run
+  ui-base-url: ${ALERTS_UI_BASE_URL:http://localhost:8080}  # Base URL for links in alert messages
   jira:
     enabled: false
     base-url: ${JIRA_BASE_URL:}

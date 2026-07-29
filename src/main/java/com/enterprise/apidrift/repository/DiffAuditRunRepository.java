@@ -9,4 +9,6 @@ import java.util.List;
 public interface DiffAuditRunRepository extends JpaRepository<DiffAuditRun, Long> {
 
     List<DiffAuditRun> findByVendorIdOrderByExecutedAtDesc(Long vendorId);
+
+    List<DiffAuditRun> findTop10ByOrderByExecutedAtDesc();
 }

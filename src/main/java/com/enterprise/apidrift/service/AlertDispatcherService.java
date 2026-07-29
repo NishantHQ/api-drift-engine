@@ -51,12 +51,19 @@ public class AlertDispatcherService {
     @Value("${alerts.pagerduty.routing-key:}")
     private String pagerDutyRoutingKey;
 
+    @Value("${alerts.batch-mode:true}")
+    private boolean batchMode;
+
+    @Value("${alerts.ui-base-url:http://localhost:8080}")
+    private String uiBaseUrl;
+
     public AlertDispatcherService(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
     }
 
     /**
      * Dispatch alerts for the given changes. Async to avoid blocking the diff pipeline.
+     * In batch mode, all changes are aggregated into a single notification per channel.
      */
     @Async("alertExecutor")
     public void dispatchAlerts(VendorConfig vendor, List<DetectedChange> alertableChanges) {
@@ -65,8 +72,19 @@ public class AlertDispatcherService {
             return;
         }
 
-        log.info("Dispatching {} alerts for vendor {}", alertableChanges.size(), vendor.getVendorName());
+        log.info("Dispatching {} alerts for vendor {} (batchMode={})",
+                alertableChanges.size(), vendor.getVendorName(), batchMode);
 
+        if (batchMode) {
+            dispatchBatch(vendor, alertableChanges);
+        } else {
+            dispatchIndividually(vendor, alertableChanges);
+        }
+    }
+
+    // --- Individual dispatch (legacy mode) ---
+
+    private void dispatchIndividually(VendorConfig vendor, List<DetectedChange> alertableChanges) {
         for (DetectedChange change : alertableChanges) {
             AlertPayload payload = buildAlertPayload(vendor, change);
 
@@ -77,6 +95,160 @@ public class AlertDispatcherService {
             }
 
             dispatchSlack(payload);
+        }
+    }
+
+    // --- Batch dispatch ---
+
+    private void dispatchBatch(VendorConfig vendor, List<DetectedChange> alertableChanges) {
+        List<AlertPayload> payloads = alertableChanges.stream()
+                .map(c -> buildAlertPayload(vendor, c))
+                .toList();
+
+        boolean hasHighOrCritical = alertableChanges.stream()
+                .anyMatch(c -> c.getSeverity() == ChangeSeverity.CRITICAL
+                        || c.getSeverity() == ChangeSeverity.HIGH);
+
+        if (hasHighOrCritical) {
+            dispatchJiraBatch(vendor, payloads);
+        }
+
+        // PagerDuty still fires per-CRITICAL change for immediate attention
+        for (AlertPayload payload : payloads) {
+            if ("CRITICAL".equals(payload.getSeverity())) {
+                dispatchPagerDuty(payload);
+            }
+        }
+
+        dispatchSlackBatch(vendor, payloads);
+    }
+
+    // --- Jira Batch ---
+
+    private void dispatchJiraBatch(VendorConfig vendor, List<AlertPayload> payloads) {
+        if (!jiraEnabled || jiraBaseUrl.isBlank()) {
+            log.debug("Jira disabled; skipping batch ticket for vendor {}", vendor.getVendorName());
+            return;
+        }
+
+        try {
+            long breaking = payloads.stream().filter(AlertPayload::isBreaking).count();
+            long critical = payloads.stream().filter(p -> "CRITICAL".equals(p.getSeverity())).count();
+
+            String summary = String.format("[API-DRIFT] %s — %d changes (%d breaking, %d critical)",
+                    vendor.getVendorName(), payloads.size(), breaking, critical);
+
+            String description = buildJiraBatchDescription(vendor, payloads);
+
+            String requestBody = String.format(
+                    "{\"fields\":{\"project\":{\"key\":\"%s\"},\"summary\":\"%s\","
+                            + "\"description\":\"%s\",\"issuetype\":{\"name\":\"Bug\"},"
+                            + "\"labels\":[\"api-drift\",\"batch\",\"%s\"]}}",
+                    jiraProjectKey,
+                    escapeJson(summary),
+                    escapeJson(description),
+                    escapeJson(vendor.getVendorName().toLowerCase()));
+
+            webClient.post()
+                    .uri(jiraBaseUrl + "/rest/api/2/issue")
+                    .header(HttpHeaders.AUTHORIZATION, "Basic " + jiraAuthToken)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
+
+            log.info("Jira batch ticket created: {} ({} changes)", summary, payloads.size());
+        } catch (Exception e) {
+            log.error("Failed to create Jira batch ticket: {}", e.getMessage());
+        }
+    }
+
+    private String buildJiraBatchDescription(VendorConfig vendor, List<AlertPayload> payloads) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("h2. API Drift Detected — Batch Summary\n");
+        sb.append("*Vendor:* ").append(vendor.getVendorName()).append("\n");
+        sb.append("*Total Changes:* ").append(payloads.size()).append("\n\n");
+
+        sb.append("h3. Changes\n");
+        sb.append("|| Severity || Endpoint || Change Type || Breaking || Description ||\n");
+
+        for (AlertPayload p : payloads) {
+            sb.append("| ").append(p.getSeverity())
+                    .append(" | ").append(p.getHttpMethod()).append(" ").append(p.getEndpointPath())
+                    .append(" | ").append(p.getChangeType())
+                    .append(" | ").append(p.isBreaking() ? "Yes" : "No")
+                    .append(" | ").append(p.getDescription())
+                    .append(" |\n");
+        }
+
+        sb.append("\nh3. Impacted Services\n");
+        List<String> services = payloads.stream()
+                .map(AlertPayload::getConsumingService)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .toList();
+        sb.append(services.isEmpty() ? "None registered" : String.join(", ", services));
+
+        return sb.toString();
+    }
+
+    // --- Slack Batch ---
+
+    private void dispatchSlackBatch(VendorConfig vendor, List<AlertPayload> payloads) {
+        if (!slackEnabled || slackWebhookUrl.isBlank()) {
+            log.debug("Slack disabled; skipping batch notification for vendor {}", vendor.getVendorName());
+            return;
+        }
+
+        try {
+            long breaking = payloads.stream().filter(AlertPayload::isBreaking).count();
+            long critical = payloads.stream().filter(p -> "CRITICAL".equals(p.getSeverity())).count();
+
+            String color = critical > 0 ? "#FF0000" : breaking > 0 ? "#FFA500" : "#36A64F";
+
+            StringBuilder fieldsJson = new StringBuilder();
+            for (AlertPayload p : payloads) {
+                String severityEmoji = switch (p.getSeverity()) {
+                    case "CRITICAL" -> "🔴";
+                    case "HIGH" -> "🟠";
+                    case "MEDIUM" -> "🟡";
+                    default -> "🟢";
+                };
+                fieldsJson.append(String.format(
+                        "{\"title\":\"%s %s %s\",\"value\":\"%s\",\"short\":false},",
+                        severityEmoji,
+                        p.getHttpMethod(), p.getEndpointPath(),
+                        escapeJson(p.getDescription())));
+            }
+            // Remove trailing comma
+            if (fieldsJson.length() > 0 && fieldsJson.charAt(fieldsJson.length() - 1) == ',') {
+                fieldsJson.setLength(fieldsJson.length() - 1);
+            }
+
+            String slackPayload = String.format(
+                    "{\"attachments\":[{\"color\":\"%s\","
+                            + "\"title\":\"API Drift: %s — %d changes (%d breaking)\","
+                            + "\"text\":\"%s\\n<%s|View in API Drift Engine>\","
+                            + "\"fields\":[%s],"
+                            + "\"footer\":\"API Drift Engine — Batch Alert\"}]}",
+                    color,
+                    vendor.getVendorName(), payloads.size(), breaking,
+                    "The following drift was detected in the latest spec poll:",
+                    uiBaseUrl + "/api/v1/diffs/active/" + vendor.getId(),
+                    fieldsJson.toString());
+
+            webClient.post()
+                    .uri(slackWebhookUrl)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .bodyValue(slackPayload)
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
+
+            log.info("Slack batch notification sent for vendor {} ({} changes)", vendor.getVendorName(), payloads.size());
+        } catch (Exception e) {
+            log.error("Failed to send Slack batch notification: {}", e.getMessage());
         }
     }
 

@@ -56,4 +56,13 @@ public class ChangeFingerprint {
     @Column(name = "last_seen_at")
     @Builder.Default
     private OffsetDateTime lastSeenAt = OffsetDateTime.now();
+
+    @Column(name = "resolved_by", length = 200)
+    private String resolvedBy;
+
+    @Column(name = "resolution_notes", columnDefinition = "TEXT")
+    private String resolutionNotes;
+
+    @Column(name = "resolved_at")
+    private OffsetDateTime resolvedAt;
 }

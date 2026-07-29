@@ -14,6 +14,7 @@ public class VendorConfigResponse {
     private String authHeaderName;
     private boolean authTokenConfigured;
     private Boolean isActive;
+    private String healthStatus;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }
