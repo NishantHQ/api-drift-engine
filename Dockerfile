@@ -26,9 +26,4 @@ EXPOSE 8080
 # Health checks handled by the platform (Render, Fly.io, K8s)
 # Container-level HEALTHCHECK omitted — JRE base image lacks curl/wget
 
-ENTRYPOINT ["java", \
-    "-XX:MaxRAMPercentage=75.0", \
-    "-XX:+UseG1GC", \
-    "-XX:+ExitOnOutOfMemoryError", \
-    "-Djava.security.egd=file:/dev/./urandom", \
-    "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
