@@ -15,12 +15,9 @@ services:
     plan: free
     region: oregon
     healthCheckPath: /actuator/health
-    healthCheckTimeout: 10
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: JAVA_OPTS
-        value: "-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: AES_ENCRYPTION_KEY
