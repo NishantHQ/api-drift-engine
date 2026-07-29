@@ -25,6 +25,12 @@ spring:
     jdbc:
       initialize-schema: never
 
+logging:
+  level:
+    com.enterprise.apidrift: DEBUG
+    org.springframework.web: INFO
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
+
 egress:
   proxy:
     connect-timeout-seconds: 5
@@ -35,6 +41,7 @@ encryption:
   aes-key: dev-key-32-bytes-long-for-aes!
 
 alerts:
+  batch-mode: true
   jira:
     enabled: false
   slack:
