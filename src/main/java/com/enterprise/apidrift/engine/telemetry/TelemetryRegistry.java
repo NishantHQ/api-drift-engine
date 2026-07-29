@@ -1,10 +1,10 @@
 package com.enterprise.apidrift.engine.telemetry;
 
 import com.enterprise.apidrift.entity.ServiceDependency;
-import com.enterprise.apidrift.entity.VendorConfig;
 import com.enterprise.apidrift.repository.ServiceDependencyRepository;
 import com.enterprise.apidrift.repository.VendorConfigRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -24,10 +24,21 @@ public class TelemetryRegistry {
     private final ServiceDependencyRepository dependencyRepository;
     private final VendorConfigRepository vendorConfigRepository;
 
+    @Value("${telemetry.seed-mock-data:false}")
+    private boolean seedMockData;
+
     public TelemetryRegistry(ServiceDependencyRepository dependencyRepository,
                              VendorConfigRepository vendorConfigRepository) {
         this.dependencyRepository = dependencyRepository;
         this.vendorConfigRepository = vendorConfigRepository;
+    }
+
+    /**
+     * Called after dependency injection is complete. Seeds mock data only when
+     * explicitly enabled (e.g., dev/demo profiles) AND the DB is empty.
+     */
+    @jakarta.annotation.PostConstruct
+    void init() {
         seedMockDataIfEmpty();
     }
 
@@ -59,7 +70,7 @@ public class TelemetryRegistry {
         }
 
         ServiceDependency dep = ServiceDependency.builder()
-                .vendor(VendorConfig.builder().id(vendorId).build())
+                .vendor(vendorConfigRepository.getReferenceById(vendorId))
                 .endpointPath(endpoint)
                 .jsonPointer(jsonPointer)
                 .serviceName(serviceName)
@@ -73,14 +84,13 @@ public class TelemetryRegistry {
      * This preserves dev convenience while allowing real data to take precedence.
      */
     private void seedMockDataIfEmpty() {
-        if (dependencyRepository.count() > 0) {
-            log.info("Telemetry registry has {} DB entries — skipping mock seed", dependencyRepository.count());
+        if (!seedMockData) {
+            log.debug("Mock data seeding is disabled (telemetry.seed-mock-data=false)");
             return;
         }
 
-        // Only seed if the referenced vendors actually exist
-        if (!vendorConfigRepository.existsById(1L) && !vendorConfigRepository.existsById(2L)) {
-            log.info("No seed vendors found — skipping telemetry mock data seed");
+        if (dependencyRepository.count() > 0) {
+            log.info("Telemetry registry has {} DB entries — skipping mock seed", dependencyRepository.count());
             return;
         }
 
