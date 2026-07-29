@@ -23,7 +23,12 @@ COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -sf http://localhost:8080/actuator/health || exit 1
+# Health checks handled by the platform (Render, Fly.io, K8s)
+# Container-level HEALTHCHECK omitted — JRE base image lacks curl/wget
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:+UseG1GC", \
+    "-XX:+ExitOnOutOfMemoryError", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-jar", "app.jar"]

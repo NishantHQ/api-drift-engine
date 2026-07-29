@@ -1,0 +1,57 @@
+# Render Blueprint — free deployment
+# Push to main, then go to: https://dashboard.render.com/blueprints
+# Connect this repo and Render auto-deploys from this file.
+#
+# Free tier:
+#   Web service: 750 hrs/month (~1 always-on instance)
+#   PostgreSQL:   1 GB storage, free for 90 days
+
+services:
+  - type: web
+    name: api-drift-engine
+    runtime: image
+    image:
+      url: ghcr.io/NishantHQ/api-drift-engine:latest
+    plan: free
+    region: oregon
+    healthCheckPath: /actuator/health
+    healthCheckTimeout: 10
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JAVA_OPTS
+        value: "-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: AES_ENCRYPTION_KEY
+        sync: false
+        generateValue: true
+      - key: ALERTS_UI_BASE_URL
+        sync: false
+        value: "https://api-drift-engine.onrender.com"
+      - key: DB_HOST
+        fromDatabase:
+          name: api-drift-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: api-drift-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: api-drift-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: api-drift-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: api-drift-db
+          property: password
+
+databases:
+  - name: api-drift-db
+    plan: free
+    region: oregon
+    postgresMajorVersion: 15
