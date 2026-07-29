@@ -70,6 +70,7 @@ encryption:
 
 # Alert Dispatch
 alerts:
+  batch-mode: true  # Aggregate changes into single Jira/Slack notification per run
   jira:
     enabled: false
     base-url: ${JIRA_BASE_URL:}

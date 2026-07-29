@@ -62,9 +62,9 @@ public class IngestionOrchestrator {
     public DiffAuditRun runPipeline(VendorConfig vendor) {
         log.info("=== Starting pipeline for vendor: {} ===", vendor.getVendorName());
 
-        // Step 1: Fetch remote spec
+        // Step 1: Fetch remote spec (with retry + circuit breaker)
         String authHeader = buildAuthHeader(vendor);
-        String rawSpec = fetchService.fetchSpec(vendor.getSpecUrl(), authHeader);
+        String rawSpec = fetchService.fetchSpec(vendor.getSpecUrl(), authHeader, vendor.getId());
 
         // Step 2: Compute SHA-256 content hash
         String contentHash = sha256(rawSpec);

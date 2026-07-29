@@ -129,8 +129,11 @@ public class FingerprintService {
             if (!stillPresent) {
                 active.setIsActive(false);
                 active.setLastSeenAt(OffsetDateTime.now());
+                // Preserve any manual resolution metadata already set
                 fingerprintRepository.save(active);
-                log.info("Fingerprint {} auto-resolved (no longer detected)", active.getFingerprintHash());
+                log.info("Fingerprint {} auto-resolved (no longer detected){}",
+                        active.getFingerprintHash(),
+                        active.getResolvedBy() != null ? " — was manually resolved by " + active.getResolvedBy() : "");
             }
         }
 

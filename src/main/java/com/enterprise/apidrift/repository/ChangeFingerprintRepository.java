@@ -16,7 +16,15 @@ public interface ChangeFingerprintRepository extends JpaRepository<ChangeFingerp
 
     List<ChangeFingerprint> findByVendorIdAndIsActiveTrue(Long vendorId);
 
+    List<ChangeFingerprint> findByIsActiveTrue();
+
     List<ChangeFingerprint> findByAuditRunId(Long auditRunId);
 
     Optional<ChangeFingerprint> findByVendorIdAndFingerprintHash(Long vendorId, String fingerprintHash);
+
+    @Query("SELECT c.severity, COUNT(c) FROM ChangeFingerprint c WHERE c.isActive = true GROUP BY c.severity")
+    List<Object[]> countActiveBySeverity();
+
+    @Query("SELECT COUNT(DISTINCT c.vendor.id) FROM ChangeFingerprint c WHERE c.isActive = true")
+    long countDistinctVendorsWithActiveChanges();
 }

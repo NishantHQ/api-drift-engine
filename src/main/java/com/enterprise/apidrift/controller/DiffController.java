@@ -2,6 +2,8 @@ package com.enterprise.apidrift.controller;
 
 import com.enterprise.apidrift.dto.DetectedChange;
 import com.enterprise.apidrift.dto.DiffTriggerResponse;
+import com.enterprise.apidrift.dto.ResolveRequest;
+import com.enterprise.apidrift.entity.ChangeFingerprint;
 import com.enterprise.apidrift.entity.DiffAuditRun;
 import com.enterprise.apidrift.entity.VendorConfig;
 import com.enterprise.apidrift.repository.ChangeFingerprintRepository;
@@ -13,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,8 +39,10 @@ public class DiffController {
      */
     @PostMapping("/trigger/{vendorId}")
     public ResponseEntity<DiffTriggerResponse> triggerDiff(@PathVariable Long vendorId) {
+        log.info("POST /api/v1/diffs/trigger/{} — manual diff triggered", vendorId);
         VendorConfig vendor = vendorRepo.findById(vendorId).orElse(null);
         if (vendor == null) {
+            log.warn("Trigger failed: vendor id={} not found", vendorId);
             return ResponseEntity.notFound().build();
         }
 
@@ -73,6 +78,7 @@ public class DiffController {
      */
     @GetMapping("/history/{vendorId}")
     public ResponseEntity<List<DiffTriggerResponse>> getHistory(@PathVariable Long vendorId) {
+        log.info("GET /api/v1/diffs/history/{}", vendorId);
         if (!vendorRepo.existsById(vendorId)) {
             return ResponseEntity.notFound().build();
         }
@@ -97,6 +103,7 @@ public class DiffController {
      */
     @GetMapping("/active/{vendorId}")
     public ResponseEntity<List<DetectedChange>> getActiveChanges(@PathVariable Long vendorId) {
+        log.info("GET /api/v1/diffs/active/{}", vendorId);
         if (!vendorRepo.existsById(vendorId)) {
             return ResponseEntity.notFound().build();
         }
@@ -118,5 +125,45 @@ public class DiffController {
                 .toList();
 
         return ResponseEntity.ok(active);
+    }
+
+    /**
+     * Manually resolve a change fingerprint.
+     * Teams use this to acknowledge they've handled a breaking change.
+     * The fingerprint is marked inactive and will not re-alert unless
+     * the change reappears in a future diff run.
+     */
+    @PostMapping("/resolve/{fingerprintId}")
+    public ResponseEntity<DetectedChange> resolveChange(@PathVariable Long fingerprintId,
+                                                         @RequestBody(required = false) ResolveRequest request) {
+        log.info("POST /api/v1/diffs/resolve/{} — manual resolution", fingerprintId);
+
+        ChangeFingerprint fingerprint = fingerprintRepo.findById(fingerprintId).orElse(null);
+        if (fingerprint == null) {
+            log.warn("Resolution failed: fingerprint id={} not found", fingerprintId);
+            return ResponseEntity.notFound().build();
+        }
+
+        fingerprint.setIsActive(false);
+        fingerprint.setResolvedBy(request != null ? request.getResolvedBy() : null);
+        fingerprint.setResolutionNotes(request != null ? request.getResolutionNotes() : null);
+        fingerprint.setResolvedAt(OffsetDateTime.now());
+        fingerprintRepo.save(fingerprint);
+
+        log.info("Fingerprint {} resolved by {} — {}",
+                fingerprint.getFingerprintHash(),
+                fingerprint.getResolvedBy() != null ? fingerprint.getResolvedBy() : "unknown",
+                fingerprint.getResolutionNotes() != null ? fingerprint.getResolutionNotes() : "no notes");
+
+        return ResponseEntity.ok(DetectedChange.builder()
+                .changeType(fingerprint.getChangeType())
+                .severity(fingerprint.getSeverity())
+                .httpMethod(fingerprint.getHttpMethod())
+                .endpointPath(fingerprint.getEndpointPath())
+                .jsonPointer(fingerprint.getJsonPointer())
+                .description(fingerprint.getDescription())
+                .fingerprintHash(fingerprint.getFingerprintHash())
+                .isBreaking(true)
+                .build());
     }
 }
