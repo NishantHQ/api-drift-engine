@@ -1,0 +1,52 @@
+# ── Production Profile ─────────────────────────────────────────────
+# Activated via: SPRING_PROFILES_ACTIVE=prod
+#
+# Assumes PostgreSQL is provided by the platform (Render, Fly.io, etc.)
+# with connection details passed via environment variables.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:api_drift}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      leak-detection-threshold: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+
+  quartz:
+    job-store-type: jdbc
+
+server:
+  shutdown: graceful
+  tomcat:
+    connection-timeout: 10s
+
+spring.lifecycle.timeout-per-shutdown-phase: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+
+logging:
+  level:
+    com.enterprise.apidrift: INFO
+    org.springframework: WARN
