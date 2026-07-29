@@ -9,9 +9,7 @@
 services:
   - type: web
     name: api-drift-engine
-    runtime: image
-    image:
-      url: ghcr.io/NishantHQ/api-drift-engine:latest
+    runtime: docker
     plan: free
     region: oregon
     healthCheckPath: /actuator/health
