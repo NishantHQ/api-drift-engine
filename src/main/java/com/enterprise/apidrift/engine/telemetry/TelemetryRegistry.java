@@ -1,49 +1,55 @@
 package com.enterprise.apidrift.engine.telemetry;
 
+import com.enterprise.apidrift.entity.ServiceDependency;
+import com.enterprise.apidrift.repository.ServiceDependencyRepository;
+import com.enterprise.apidrift.repository.VendorConfigRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
 /**
- * Mock telemetry registry mapping (VendorID + Endpoint + JSON Pointer → Internal Services).
+ * Telemetry registry that resolves which internal services consume which
+ * vendor API endpoints/fields.
  *
- * In production: queries gateway logs, distributed tracing (e.g. Tempo/Zipkin),
- * or a static dependency mapping database.
+ * Reads from the service_dependencies table (populated via the
+ * /api/v1/telemetry/register API), falling back to mock data only when
+ * the database is empty (e.g., development with no registrations yet).
  */
 @Slf4j
 @Component
 public class TelemetryRegistry {
 
-    /**
-     * Mock registry: VendorID → (Endpoint → (JSONPointer → [service names])).
-     */
-    private final Map<Long, Map<String, Map<String, Set<String>>>> registry = new HashMap<>();
+    private final ServiceDependencyRepository dependencyRepository;
+    private final VendorConfigRepository vendorConfigRepository;
 
-    public TelemetryRegistry() {
-        // Seed with mock data for development
-        seedMockData();
+    @Value("${telemetry.seed-mock-data:false}")
+    private boolean seedMockData;
+
+    public TelemetryRegistry(ServiceDependencyRepository dependencyRepository,
+                             VendorConfigRepository vendorConfigRepository) {
+        this.dependencyRepository = dependencyRepository;
+        this.vendorConfigRepository = vendorConfigRepository;
+    }
+
+    /**
+     * Called after dependency injection is complete. Seeds mock data only when
+     * explicitly enabled (e.g., dev/demo profiles) AND the DB is empty.
+     */
+    @jakarta.annotation.PostConstruct
+    void init() {
+        seedMockDataIfEmpty();
     }
 
     /**
      * Find all internal services that consume a specific vendor endpoint + field.
      */
     public Set<String> findConsumers(Long vendorId, String endpointPath,
-                                      String jsonPointer, String httpMethod) {
-        Map<String, Map<String, Set<String>>> vendorMap = registry.get(vendorId);
-        if (vendorMap == null) return Collections.emptySet();
-
-        // Try exact endpoint match first, then prefix
-        Set<String> consumers = new HashSet<>();
-        for (var entry : vendorMap.entrySet()) {
-            if (endpointPath != null && endpointPath.contains(entry.getKey())) {
-                for (var fieldEntry : entry.getValue().entrySet()) {
-                    if (jsonPointer == null || jsonPointer.contains(fieldEntry.getKey())) {
-                        consumers.addAll(fieldEntry.getValue());
-                    }
-                }
-            }
-        }
+                                     String jsonPointer, String httpMethod) {
+        Set<String> consumers = dependencyRepository.findConsumers(
+                vendorId, endpointPath != null ? endpointPath : "",
+                jsonPointer != null ? jsonPointer : "");
 
         if (!consumers.isEmpty()) {
             log.debug("Telemetry hit: vendor={}, endpoint={}, field={} → {}",
@@ -53,26 +59,51 @@ public class TelemetryRegistry {
     }
 
     /**
-     * Register a consumer mapping programmatically.
+     * Register a consumer mapping programmatically (also persists to DB).
      */
     public void register(Long vendorId, String endpoint, String jsonPointer, String serviceName) {
-        registry.computeIfAbsent(vendorId, k -> new HashMap<>())
-                .computeIfAbsent(endpoint, k -> new HashMap<>())
-                .computeIfAbsent(jsonPointer, k -> new HashSet<>())
-                .add(serviceName);
+        if (dependencyRepository.existsByVendorIdAndServiceNameAndEndpointPathAndHttpMethodAndJsonPointer(
+                vendorId, serviceName, endpoint, null, jsonPointer)) {
+            log.debug("Dependency already exists: vendor={}, endpoint={}, service={} — skipping",
+                    vendorId, endpoint, serviceName);
+            return;
+        }
+
+        ServiceDependency dep = ServiceDependency.builder()
+                .vendor(vendorConfigRepository.getReferenceById(vendorId))
+                .endpointPath(endpoint)
+                .jsonPointer(jsonPointer)
+                .serviceName(serviceName)
+                .build();
+        dependencyRepository.save(dep);
+        log.debug("Registered: vendor={}, endpoint={}, field={} → {}", vendorId, endpoint, jsonPointer, serviceName);
     }
 
-    private void seedMockData() {
-        // Vendor 1: Stripe-like payment gateway
-        register(1L, "/v1/charges", "/requestBody/properties/amount", "payment-service");
-        register(1L, "/v1/charges", "/requestBody/properties/currency", "payment-service");
-        register(1L, "/v1/charges", "/responses/200/properties/id", "order-service");
-        register(1L, "/v1/customers", "/responses/200/properties/email", "user-service");
+    /**
+     * Seeds mock data only when the database has no registrations yet.
+     * This preserves dev convenience while allowing real data to take precedence.
+     */
+    private void seedMockDataIfEmpty() {
+        if (!seedMockData) {
+            log.debug("Mock data seeding is disabled (telemetry.seed-mock-data=false)");
+            return;
+        }
 
-        // Vendor 2: Shopify-like e-commerce
-        register(2L, "/admin/api/orders", "/responses/200/properties/line_items", "fulfillment-service");
-        register(2L, "/admin/api/products", "/responses/200/properties/variants", "catalog-service");
+        if (dependencyRepository.count() > 0) {
+            log.info("Telemetry registry has {} DB entries — skipping mock seed", dependencyRepository.count());
+            return;
+        }
 
-        log.info("Telemetry registry seeded with {} vendors", registry.size());
+        log.info("Seeding telemetry registry with mock data for development");
+        if (vendorConfigRepository.existsById(1L)) {
+            register(1L, "/v1/charges", "/requestBody/properties/amount", "payment-service");
+            register(1L, "/v1/charges", "/requestBody/properties/currency", "payment-service");
+            register(1L, "/v1/charges", "/responses/200/properties/id", "order-service");
+            register(1L, "/v1/customers", "/responses/200/properties/email", "user-service");
+        }
+        if (vendorConfigRepository.existsById(2L)) {
+            register(2L, "/admin/api/orders", "/responses/200/properties/line_items", "fulfillment-service");
+            register(2L, "/admin/api/products", "/responses/200/properties/variants", "catalog-service");
+        }
     }
 }
