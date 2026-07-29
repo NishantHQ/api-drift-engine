@@ -26,9 +26,10 @@ spring:
     baseline-on-migrate: false
 
   quartz:
-    job-store-type: jdbc
+    job-store-type: memory  # Free tier = single instance, no JDBC needed
 
 server:
+  port: ${PORT:8080}
   shutdown: graceful
   tomcat:
     connection-timeout: 10s
