@@ -115,6 +115,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
@@ -140,6 +145,18 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
+                <configuration>
+                    <excludes>
+                        <!-- DTOs: data carriers, Lombok @Data/@Builder -->
+                        <exclude>com/enterprise/apidrift/dto/*</exclude>
+                        <!-- Entities: JPA entities, Lombok generated -->
+                        <exclude>com/enterprise/apidrift/entity/*</exclude>
+                        <!-- Config: Spring @Configuration, no business logic -->
+                        <exclude>com/enterprise/apidrift/config/*</exclude>
+                        <!-- Application entry point -->
+                        <exclude>com/enterprise/apidrift/ApiDriftApplication</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
