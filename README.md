@@ -82,6 +82,7 @@ src/main/java/com/enterprise/apidrift/
 ├── controller/
 │   ├── VendorController.java         # CRUD /api/v1/vendors + health
 │   ├── DiffController.java           # /api/v1/diffs/trigger, /history, /active, /resolve
+│   ├── SpecSnapshotController.java   # /api/v1/snapshots — browse stored specs
 │   ├── DashboardController.java      # /api/v1/dashboard
 │   ├── TelemetryController.java      # /api/v1/telemetry/register, /dependencies
 │   └── GlobalExceptionHandler.java   # Clean error responses
@@ -91,6 +92,7 @@ src/main/java/com/enterprise/apidrift/
 │   ├── DetectedChange.java           # Individual diff result
 │   ├── DiffTriggerResponse.java      # API response for diff runs
 │   ├── ServiceDependency{Request,Response}.java
+│   ├── SpecSnapshotResponse.java     # Stored spec snapshot response
 │   ├── VendorConfig{Request,Response}.java
 │   └── ResolveRequest.java           # Manual resolution request
 ├── engine/
@@ -156,6 +158,14 @@ src/main/java/com/enterprise/apidrift/
 | `GET` | `/api/v1/diffs/history/{vendorId}` | Get audit run history for a vendor |
 | `GET` | `/api/v1/diffs/active/{vendorId}` | Get active (unresolved) breaking changes |
 | `POST` | `/api/v1/diffs/resolve/{fingerprintId}` | Manually resolve a change |
+
+### Snapshots
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/snapshots/{vendorId}` | List all stored spec snapshots (metadata only) |
+| `GET` | `/api/v1/snapshots/{vendorId}/latest` | Latest snapshot with full `rawSpec` JSON |
+| `GET` | `/api/v1/snapshots/{vendorId}/{id}` | Specific snapshot with full `rawSpec` JSON |
 
 ### Telemetry
 
