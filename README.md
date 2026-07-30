@@ -2,9 +2,13 @@
 
 [![Java](https://img.shields.io/badge/Java-21-blue)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
+[![CI](https://github.com/NishantHQ/api-drift-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/NishantHQ/api-drift-engine/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![Deploy](https://img.shields.io/badge/deploy-Render-46e3b7)](https://api-drift-engine.onrender.com/actuator/health)
 
-An **active outbound vendor risk engine** that polls external vendor OpenAPI specifications, executes directional compatibility diffs, correlates breaking changes against internal service telemetry, deduplicates alerts, and automates remediation — all within an air-gapped, VPC-isolated cloud perimeter.
+An **active outbound vendor risk engine** that polls external vendor OpenAPI specifications, executes directional compatibility diffs, correlates breaking changes against internal service telemetry, deduplicates alerts, and automates remediation.
+
+**Live demo:** https://api-drift-engine.onrender.com
 
 ---
 
@@ -37,7 +41,7 @@ An **active outbound vendor risk engine** that polls external vendor OpenAPI spe
                │  Raw Detected Changes
                ▼
 ┌──────────────────────────────┐
-│   Usage Correlation Engine   │  ◄── (Gateway Logs / Telemetry Registry)
+│   Usage Correlation Engine   │  ◄── (Telemetry Registry)
 └──────────────┬───────────────┘
                │  Impact-Weighted Diffs
                ▼
@@ -53,13 +57,15 @@ An **active outbound vendor risk engine** that polls external vendor OpenAPI spe
 |-------|-----------|
 | Runtime | Java 21 |
 | Framework | Spring Boot 3.3 |
-| Database | PostgreSQL (JSONB) |
+| Database | PostgreSQL 15 (JSONB), H2 for dev/test |
 | Migrations | Flyway |
 | Scheduling | Quartz |
 | HTTP Client | WebClient (WebFlux) |
 | Spec Parsing | swagger-parser 2.1.18, openapi-diff-core 2.1.7 |
 | Encryption | AES-256-GCM |
 | Build | Maven |
+| CI/CD | GitHub Actions + Render |
+| Code Quality | SonarCloud + JaCoCo |
 
 ## Project Structure
 
@@ -74,39 +80,48 @@ src/main/java/com/enterprise/apidrift/
 │   ├── SpecPollingJob.java           # Quartz job → IngestionOrchestrator
 │   └── WebClientConfig.java          # WebClient with timeouts/limits
 ├── controller/
-│   ├── VendorController.java         # CRUD /api/v1/vendors
-│   ├── DiffController.java           # /api/v1/diffs/trigger, /history, /active
+│   ├── VendorController.java         # CRUD /api/v1/vendors + health
+│   ├── DiffController.java           # /api/v1/diffs/trigger, /history, /active, /resolve
+│   ├── DashboardController.java      # /api/v1/dashboard
+│   ├── TelemetryController.java      # /api/v1/telemetry/register, /dependencies
 │   └── GlobalExceptionHandler.java   # Clean error responses
 ├── dto/
 │   ├── AlertPayload.java             # Jira/Slack/PagerDuty payload
+│   ├── DashboardResponse.java        # Dashboard aggregation response
 │   ├── DetectedChange.java           # Individual diff result
 │   ├── DiffTriggerResponse.java      # API response for diff runs
-│   └── VendorConfig{Request,Response}.java
+│   ├── ServiceDependency{Request,Response}.java
+│   ├── VendorConfig{Request,Response}.java
+│   └── ResolveRequest.java           # Manual resolution request
 ├── engine/
-│   ├── EgressFetchService.java       # SSRF-guarded HTTP fetcher
+│   ├── EgressFetchService.java       # SSRF-guarded HTTP fetcher + retry/circuit
 │   ├── OpenApiNormalizationService.java  # 3.0/3.1 parser + normalization
 │   ├── DirectionalCompatibilityEvaluator.java
 │   ├── FingerprintService.java       # SHA-256 dedup + state machine
 │   ├── rules/
 │   │   ├── BreakingRule.java         # Interface
-│   │   ├── RequestRuleEvaluator.java # FR-3.1
+│   │   ├── RequestRuleEvaluator.java  # FR-3.1
 │   │   ├── ResponseRuleEvaluator.java # FR-3.2
-│   │   └── WebhookRuleEvaluator.java # FR-3.3
+│   │   └── WebhookRuleEvaluator.java  # FR-3.3
 │   └── telemetry/
-│       ├── TelemetryRegistry.java    # Consumer-usage registry (mock)
+│       ├── TelemetryRegistry.java    # DB-backed consumer-usage registry
 │       └── UsageCorrelationService.java  # Severity adjustment
 ├── entity/
 │   ├── VendorConfig.java
 │   ├── SpecSnapshot.java
 │   ├── DiffAuditRun.java
 │   ├── ChangeFingerprint.java
+│   ├── ServiceDependency.java        # Service-to-vendor dependency mapping
 │   ├── ChangeSeverity.java           # CRITICAL, HIGH, MEDIUM, LOW, INFO
-│   └── RunStatus.java                # SUCCESS, FAILURE, NO_CHANGE_DETECTED, IN_PROGRESS
-├── repository/                       # Spring Data JPA repos × 4
+│   ├── RunStatus.java                # SUCCESS, FAILURE, NO_CHANGE_DETECTED, IN_PROGRESS
+│   └── VendorHealthStatus.java       # HEALTHY, DEGRADED, DOWN
+├── repository/                       # Spring Data JPA repos × 5
 └── service/
-    ├── IngestionOrchestrator.java     # Full pipeline orchestrator
-    ├── AlertDispatcherService.java    # Jira + Slack + PagerDuty
-    └── EncryptionService.java        # AES-256-GCM token encryption
+    ├── IngestionOrchestrator.java    # Full pipeline orchestrator
+    ├── AlertDispatcherService.java   # Jira + Slack + PagerDuty (batch mode)
+    ├── DashboardService.java         # Operations dashboard aggregation
+    ├── EncryptionService.java        # AES-256-GCM token encryption
+    └── VendorHealthService.java      # Circuit breaker for spec fetching
 ```
 
 ## Database Schema
@@ -116,7 +131,8 @@ src/main/java/com/enterprise/apidrift/
 | `vendor_configs` | Vendor registration, spec URLs, cron schedules, auth tokens |
 | `spec_snapshots` | Immutable OpenAPI spec snapshots (JSONB + SHA-256 hash) |
 | `diff_audit_runs` | Audit trail for each diff execution |
-| `change_fingerprints` | Deduplicated change items with state tracking (NEW → ACTIVE → RESOLVED) |
+| `change_fingerprints` | Deduplicated change items with state tracking (NEW → ACTIVE → RESOLVED) and resolution metadata |
+| `service_dependencies` | Internal service → vendor API dependency mappings for telemetry correlation |
 
 ## REST API
 
@@ -129,6 +145,8 @@ src/main/java/com/enterprise/apidrift/
 | `POST` | `/api/v1/vendors` | Register a new vendor |
 | `PUT` | `/api/v1/vendors/{id}` | Update vendor configuration |
 | `DELETE` | `/api/v1/vendors/{id}` | Remove a vendor |
+| `GET` | `/api/v1/vendors/{id}/health` | Circuit-breaker health status |
+| `POST` | `/api/v1/vendors/{id}/health/reset` | Reset circuit breaker |
 
 ### Diffs
 
@@ -137,6 +155,22 @@ src/main/java/com/enterprise/apidrift/
 | `POST` | `/api/v1/diffs/trigger/{vendorId}` | Manually trigger a diff run |
 | `GET` | `/api/v1/diffs/history/{vendorId}` | Get audit run history for a vendor |
 | `GET` | `/api/v1/diffs/active/{vendorId}` | Get active (unresolved) breaking changes |
+| `POST` | `/api/v1/diffs/resolve/{fingerprintId}` | Manually resolve a change |
+
+### Telemetry
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/telemetry/register` | Register a service→vendor dependency |
+| `GET` | `/api/v1/telemetry/dependencies` | List dependencies (filter: `?vendorId=&serviceName=`) |
+| `GET` | `/api/v1/telemetry/services/{vendorId}` | Services consuming a vendor |
+| `DELETE` | `/api/v1/telemetry/dependencies/{id}` | Remove a dependency |
+
+### Dashboard
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/dashboard` | Operations summary: active changes, severity breakdown, impacted services, recent runs |
 
 ## Breaking Change Rules
 
@@ -173,6 +207,8 @@ Detected changes are correlated against internal telemetry (gateway logs / depen
 - **Actively consumed** by internal services within the last 30 days → escalated to **CRITICAL**
 - **Not consumed** by any internal service → downgraded to **LOW / INFORMATIONAL**
 
+Register dependencies via the telemetry API or the `TelemetryRegistry`.
+
 ## Fingerprint Deduplication
 
 Each change gets a deterministic SHA-256 fingerprint:
@@ -183,19 +219,42 @@ SHA256(VendorID + ":" + EndpointPath + ":" + HTTPMethod + ":" + ChangeType + ":"
 
 State machine: `NEW` → `ACTIVE` → `RESOLVED`. Repeat daily runs with identical breaking changes do **not** re-trigger notifications. Alerts fire only on `NEW` or `RESOLVED` transitions.
 
+## Alert Batching
+
+When `alerts.batch-mode=true` (default), all changes from a single diff run are aggregated into one Jira ticket and one Slack message per vendor, preventing alert fatigue. PagerDuty still fires per-CRITICAL change. Set `alerts.batch-mode=false` for per-change notifications.
+
+## CI/CD
+
+| Event | What happens |
+|-------|-------------|
+| Push to `main` | Build → Test → SonarCloud scan → Package → Docker image pushed to GHCR |
+| PR to `main` | Build → Test → SonarCloud scan |
+
+**Deploy:** Push to `main` triggers Render auto-deploy from `render.yaml`. The blueprint creates a web service (Docker build) + PostgreSQL 15, both free tier.
+
 ## Getting Started
 
 ### Prerequisites
 
 - Java 21
 - Maven 3.9+
-- PostgreSQL 15+
-- Docker (optional, for local PostgreSQL)
+- PostgreSQL 15+ (or H2 for dev)
+- Docker (optional)
+
+### Quick Start (H2)
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=h2
+```
 
 ### Configuration
 
 ```bash
-# Required environment variables
+cp .env.example .env   # Review and fill in values
+```
+
+```bash
+# Required
 export DB_USERNAME=apidrift
 export DB_PASSWORD=your_password
 export AES_ENCRYPTION_KEY=your-32-byte-encryption-key
@@ -214,8 +273,11 @@ export PAGERDUTY_ROUTING_KEY=your-pd-routing-key
 # Build
 ./mvnw clean package
 
-# Run
+# Run (PostgreSQL required)
 java -jar target/api-drift-engine-1.0.0.jar
+
+# Run with H2 (no PostgreSQL needed)
+java -jar target/api-drift-engine-1.0.0.jar --spring.profiles.active=h2
 ```
 
 ### Register a Vendor
@@ -239,12 +301,62 @@ curl -X POST http://localhost:8080/api/v1/diffs/trigger/1 \
   -H "Authorization: Basic $(echo -n 'admin:admin' | base64)"
 ```
 
+### Register a Dependency
+
+```bash
+curl -X POST http://localhost:8080/api/v1/telemetry/register \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'admin:admin' | base64)" \
+  -d '{
+    "vendorId": 1,
+    "endpointPath": "/v1/charges",
+    "httpMethod": "POST",
+    "jsonPointer": "/requestBody/properties/amount",
+    "serviceName": "payment-service"
+  }'
+```
+
+### View Dashboard
+
+```bash
+curl http://localhost:8080/api/v1/dashboard \
+  -H "Authorization: Basic $(echo -n 'admin:admin' | base64)"
+```
+
+## Test Coverage
+
+**133 tests** across 10 test classes, 61% business logic coverage (90%+ on 16 of 18 core classes):
+
+| Component | Coverage |
+|-----------|----------|
+| Rule evaluators (Request, Response, Webhook) | 93-95% |
+| Engine (Fingerprint, Diff evaluator, Egress SSRF) | 32-100% |
+| Services (Encryption, Dashboard, Telemetry, Health) | 93-100% |
+| Controllers (Vendor, Diff, Telemetry, Dashboard) | 88-99% |
+
+Run tests with coverage:
+```bash
+./mvnw test jacoco:report
+open target/site/jacoco/index.html
+```
+
 ## Security Features
 
 - **SSRF Prevention**: Blocks loopback (127.0.0.1, localhost), link-local (169.254.169.254), and private RFC 1918 IP ranges
 - **Connection Guardrails**: Max 10s connect timeout, 30s read timeout, 20 MB payload cap
 - **Encryption at Rest**: Vendor API tokens stored with AES-256-GCM encryption
+- **Circuit Breaker**: 3 retries with exponential backoff, 30-min cooldown on 3+ consecutive fetch failures
 - **Air-gapped Operation**: No external outbound access except through the configured egress proxy
+
+## Deployment
+
+The project includes a [Render Blueprint](render.yaml) for one-click free deployment:
+
+1. Go to [dashboard.render.com/blueprints](https://dashboard.render.com/blueprints)
+2. Connect this repo → Render creates web service + PostgreSQL 15
+3. **$0/month** — 750 hrs web service + 1 GB PostgreSQL
+
+See [.env.example](.env.example) for all configuration options.
 
 ## License
 
