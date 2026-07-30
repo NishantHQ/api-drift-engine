@@ -2,6 +2,7 @@ package com.enterprise.apidrift.controller;
 
 import com.enterprise.apidrift.dto.ChangeFeedResponse;
 import com.enterprise.apidrift.entity.ChangeFingerprint;
+import com.enterprise.apidrift.entity.ChangeSeverity;
 import com.enterprise.apidrift.repository.ChangeFingerprintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,9 +55,18 @@ public class ChangeFeedController {
             }
         }
 
+        ChangeSeverity severityEnum = null;
+        if (severity != null && !severity.isBlank()) {
+            try {
+                severityEnum = ChangeSeverity.valueOf(severity.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid severity value: {}", severity);
+            }
+        }
+
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "firstSeenAt"));
         Page<ChangeFingerprint> results = fingerprintRepo.findFiltered(
-                vendorId, severity, activeOnly, sinceDate, pageable);
+                vendorId, severityEnum, activeOnly, sinceDate, pageable);
 
         Page<ChangeFeedResponse> response = results.map(this::toResponse);
         return ResponseEntity.ok(response);
@@ -69,7 +79,7 @@ public class ChangeFeedController {
     public ResponseEntity<Map<String, Object>> getStats() {
         log.info("GET /api/v1/changes/stats");
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalActiveChanges", (int) fingerprintRepo.findByIsActiveTrue().size());
+        stats.put("totalActiveChanges", (int) fingerprintRepo.countByIsActiveTrue());
         stats.put("vendorsWithActiveChanges", (int) fingerprintRepo.countDistinctVendorsWithActiveChanges());
         stats.put("bySeverity", fingerprintRepo.countActiveBySeverity().stream()
                 .map(row -> Map.of("severity", row[0].toString(), "count", (Long) row[1]))

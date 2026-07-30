@@ -17,6 +17,6 @@ public interface VendorConfigRepository extends JpaRepository<VendorConfig, Long
 
     boolean existsByVendorName(String vendorName);
 
-    @Query("SELECT v FROM VendorConfig v WHERE v.tags LIKE %:tag%")
+    @Query("SELECT v FROM VendorConfig v WHERE CONCAT(',', v.tags, ',') LIKE CONCAT('%,', :tag, ',%')")
     List<VendorConfig> findByTag(@Param("tag") String tag);
 }
