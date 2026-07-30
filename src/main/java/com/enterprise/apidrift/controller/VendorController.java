@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -29,7 +30,13 @@ public class VendorController {
     private final VendorHealthService healthService;
 
     @GetMapping
-    public List<VendorConfigResponse> listAll() {
+    public List<VendorConfigResponse> listAll(@RequestParam(required = false) String tag) {
+        if (tag != null && !tag.isBlank()) {
+            log.info("GET /api/v1/vendors — filtered by tag '{}'", tag);
+            return vendorRepo.findByTag(tag).stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
         log.info("GET /api/v1/vendors — listing all vendors");
         return vendorRepo.findAll().stream()
                 .map(this::toResponse)
@@ -62,6 +69,7 @@ public class VendorController {
                         ? encryptionService.encrypt(request.getAuthToken())
                         : null)
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .tags(request.getTags() != null ? request.getTags() : Collections.emptyList())
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
@@ -85,6 +93,9 @@ public class VendorController {
                         vendor.setEncryptedAuthToken(encryptionService.encrypt(request.getAuthToken()));
                     }
                     vendor.setIsActive(request.getIsActive());
+                    if (request.getTags() != null) {
+                        vendor.setTags(request.getTags());
+                    }
                     vendor = vendorRepo.save(vendor);
                     log.info("Vendor id={} updated", id);
                     return ResponseEntity.ok(toResponse(vendor));
@@ -144,6 +155,7 @@ public class VendorController {
                 .authHeaderName(vendor.getAuthHeaderName())
                 .authTokenConfigured(vendor.getEncryptedAuthToken() != null)
                 .isActive(vendor.getIsActive())
+                .tags(vendor.getTags())
                 .healthStatus(healthService.getStatus(vendor.getId()).name())
                 .createdAt(vendor.getCreatedAt())
                 .updatedAt(vendor.getUpdatedAt())

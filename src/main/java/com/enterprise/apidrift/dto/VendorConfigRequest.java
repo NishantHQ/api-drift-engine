@@ -3,6 +3,7 @@ package com.enterprise.apidrift.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class VendorConfigRequest {
@@ -21,4 +22,6 @@ public class VendorConfigRequest {
     private String authToken;       // Plaintext — encrypted before storage
 
     private Boolean isActive = true;
+
+    private List<String> tags;
 }

@@ -1,10 +1,13 @@
 package com.enterprise.apidrift.repository;
 
 import com.enterprise.apidrift.entity.ChangeFingerprint;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +30,18 @@ public interface ChangeFingerprintRepository extends JpaRepository<ChangeFingerp
 
     @Query("SELECT COUNT(DISTINCT c.vendor.id) FROM ChangeFingerprint c WHERE c.isActive = true")
     long countDistinctVendorsWithActiveChanges();
+
+    @Query("SELECT c FROM ChangeFingerprint c WHERE "
+            + "(:vendorId IS NULL OR c.vendor.id = :vendorId) "
+            + "AND (:severity IS NULL OR c.severity = :severity) "
+            + "AND (:activeOnly = false OR c.isActive = true) "
+            + "AND (:since IS NULL OR c.firstSeenAt >= :since)")
+    Page<ChangeFingerprint> findFiltered(@Param("vendorId") Long vendorId,
+                                         @Param("severity") String severity,
+                                         @Param("activeOnly") boolean activeOnly,
+                                         @Param("since") OffsetDateTime since,
+                                         Pageable pageable);
+
+    List<ChangeFingerprint> findByVendorIdAndFirstSeenAtAfterOrderByFirstSeenAtDesc(
+            Long vendorId, OffsetDateTime since);
 }
