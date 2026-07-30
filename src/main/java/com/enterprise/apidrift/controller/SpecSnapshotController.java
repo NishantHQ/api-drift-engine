@@ -1,9 +1,14 @@
 package com.enterprise.apidrift.controller;
 
+import com.enterprise.apidrift.dto.DetectedChange;
+import com.enterprise.apidrift.dto.SpecDiffResponse;
 import com.enterprise.apidrift.dto.SpecSnapshotResponse;
+import com.enterprise.apidrift.engine.DirectionalCompatibilityEvaluator;
+import com.enterprise.apidrift.engine.OpenApiNormalizationService;
 import com.enterprise.apidrift.entity.SpecSnapshot;
 import com.enterprise.apidrift.repository.SpecSnapshotRepository;
 import com.enterprise.apidrift.repository.VendorConfigRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +28,8 @@ public class SpecSnapshotController {
 
     private final SpecSnapshotRepository snapshotRepo;
     private final VendorConfigRepository vendorRepo;
+    private final OpenApiNormalizationService normalizationService;
+    private final DirectionalCompatibilityEvaluator compatibilityEvaluator;
 
     /**
      * List all snapshots for a vendor (metadata only — no raw spec payload).
@@ -66,6 +73,40 @@ public class SpecSnapshotController {
                 .filter(s -> s.getVendor().getId().equals(vendorId))
                 .map(s -> ResponseEntity.ok(toResponse(s, true)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Compare two snapshots and return both specs with detected changes.
+     * Uses the same diff engine as the ingestion pipeline for consistency.
+     */
+    @GetMapping("/{vendorId}/diff")
+    public ResponseEntity<SpecDiffResponse> compareSnapshots(
+            @PathVariable Long vendorId,
+            @RequestParam Long old,
+            @RequestParam Long newSnapshot) {
+        log.info("GET /api/v1/snapshots/{}/diff — old={}, new={}", vendorId, old, newSnapshot);
+
+        SpecSnapshot oldSnap = snapshotRepo.findById(old).orElse(null);
+        SpecSnapshot newSnap = snapshotRepo.findById(newSnapshot).orElse(null);
+
+        if (oldSnap == null || newSnap == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!oldSnap.getVendor().getId().equals(vendorId)
+                || !newSnap.getVendor().getId().equals(vendorId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Parse both specs and run the same diff engine used in ingestion
+        JsonNode oldSpec = normalizationService.parseAndNormalize(oldSnap.getRawSpec());
+        JsonNode newSpec = normalizationService.parseAndNormalize(newSnap.getRawSpec());
+        List<DetectedChange> changes = compatibilityEvaluator.evaluate(oldSpec, newSpec);
+
+        return ResponseEntity.ok(SpecDiffResponse.builder()
+                .oldSnapshot(toResponse(oldSnap, true))
+                .newSnapshot(toResponse(newSnap, true))
+                .changes(changes)
+                .build());
     }
 
     private SpecSnapshotResponse toResponse(SpecSnapshot snapshot, boolean includeRawSpec) {

@@ -3,6 +3,8 @@ package com.enterprise.apidrift.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.OffsetDateTime;
+import java.util.Collections;
+import java.util.List;
 
 @Entity
 @Table(name = "vendor_configs")
@@ -34,6 +36,11 @@ public class VendorConfig {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    @Convert(converter = com.enterprise.apidrift.config.TagListConverter.class)
+    @Column(name = "tags")
+    @Builder.Default
+    private List<String> tags = Collections.emptyList();
 
     @Column(name = "created_at")
     @Builder.Default

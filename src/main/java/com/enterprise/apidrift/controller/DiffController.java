@@ -3,6 +3,7 @@ package com.enterprise.apidrift.controller;
 import com.enterprise.apidrift.dto.DetectedChange;
 import com.enterprise.apidrift.dto.DiffTriggerResponse;
 import com.enterprise.apidrift.dto.ResolveRequest;
+import com.enterprise.apidrift.dto.VendorStatsResponse;
 import com.enterprise.apidrift.entity.ChangeFingerprint;
 import com.enterprise.apidrift.entity.DiffAuditRun;
 import com.enterprise.apidrift.entity.VendorConfig;
@@ -16,7 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
-import java.util.List;
+import java.time.YearMonth;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -164,6 +166,80 @@ public class DiffController {
                 .description(fingerprint.getDescription())
                 .fingerprintHash(fingerprint.getFingerprintHash())
                 .isBreaking(true)
+                .build());
+    }
+
+    /**
+     * Get per-month change statistics and trends for a vendor.
+     * Groups audit runs and changes by month for the last N months.
+     */
+    @GetMapping("/stats/{vendorId}")
+    public ResponseEntity<VendorStatsResponse> getStats(@PathVariable Long vendorId,
+                                                        @RequestParam(defaultValue = "6") int months) {
+        log.info("GET /api/v1/diffs/stats/{} — months={}", vendorId, months);
+
+        VendorConfig vendor = vendorRepo.findById(vendorId).orElse(null);
+        if (vendor == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        OffsetDateTime since = OffsetDateTime.now().minusMonths(months);
+
+        // Fetch raw data
+        List<DiffAuditRun> runs = auditRepo.findByVendorIdAndExecutedAtAfterOrderByExecutedAtDesc(
+                vendorId, since);
+        List<ChangeFingerprint> fingerprints = fingerprintRepo
+                .findByVendorIdAndFirstSeenAtAfterOrderByFirstSeenAtDesc(vendorId, since);
+
+        // Group by month in Java (avoids DB-specific TO_CHAR, works with H2 tests)
+        Map<YearMonth, List<DiffAuditRun>> runsByMonth = runs.stream()
+                .collect(Collectors.groupingBy(r -> YearMonth.from(r.getExecutedAt())));
+        Map<YearMonth, List<ChangeFingerprint>> changesByMonth = fingerprints.stream()
+                .collect(Collectors.groupingBy(c -> YearMonth.from(c.getFirstSeenAt())));
+
+        // Build sorted month keys (most recent first)
+        TreeSet<YearMonth> allMonths = new TreeSet<>(Comparator.reverseOrder());
+        allMonths.addAll(runsByMonth.keySet());
+        allMonths.addAll(changesByMonth.keySet());
+
+        List<VendorStatsResponse.MonthlyStats> monthly = new ArrayList<>();
+        long totalRuns = 0, totalChanges = 0, totalBreaking = 0;
+
+        for (YearMonth ym : allMonths) {
+            List<DiffAuditRun> monthRuns = runsByMonth.getOrDefault(ym, List.of());
+            List<ChangeFingerprint> monthChanges = changesByMonth.getOrDefault(ym, List.of());
+
+            long breaking = monthChanges.stream()
+                    .filter(c -> c.getSeverity().name().equals("CRITICAL")
+                            || c.getSeverity().name().equals("HIGH"))
+                    .count();
+            long resolved = monthChanges.stream().filter(c -> !c.getIsActive()).count();
+            long unresolved = monthChanges.size() - resolved;
+
+            monthly.add(VendorStatsResponse.MonthlyStats.builder()
+                    .yearMonth(ym.toString())
+                    .auditRuns(monthRuns.size())
+                    .changesDetected(monthChanges.size())
+                    .breakingChanges(breaking)
+                    .resolved(resolved)
+                    .unresolved(unresolved)
+                    .build());
+
+            totalRuns += monthRuns.size();
+            totalChanges += monthChanges.size();
+            totalBreaking += breaking;
+        }
+
+        long activeNow = fingerprintRepo.findByVendorIdAndIsActiveTrue(vendorId).size();
+
+        return ResponseEntity.ok(VendorStatsResponse.builder()
+                .vendorId(vendorId)
+                .vendorName(vendor.getVendorName())
+                .totalAuditRuns(totalRuns)
+                .totalChangesDetected(totalChanges)
+                .totalBreakingChanges(totalBreaking)
+                .activeChanges(activeNow)
+                .monthlyBreakdown(monthly)
                 .build());
     }
 }

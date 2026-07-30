@@ -45,9 +45,18 @@ class VendorControllerTest {
     void listAll() {
         when(vendorRepo.findAll()).thenReturn(List.of(vendor(1L, "A"), vendor(2L, "B")));
         when(healthService.getStatus(any())).thenReturn(VendorHealthStatus.HEALTHY);
-        List<VendorConfigResponse> result = controller.listAll();
+        List<VendorConfigResponse> result = controller.listAll(null);
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getHealthStatus()).isEqualTo("HEALTHY");
+    }
+
+    @Test @DisplayName("listAll filters by tag")
+    void listAllByTag() {
+        when(vendorRepo.findByTag("payments")).thenReturn(List.of(vendor(1L, "Stripe")));
+        when(healthService.getStatus(any())).thenReturn(VendorHealthStatus.HEALTHY);
+        List<VendorConfigResponse> result = controller.listAll("payments");
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getVendorName()).isEqualTo("Stripe");
     }
 
     @Test @DisplayName("getById returns 200 for existing vendor")
