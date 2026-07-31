@@ -5,14 +5,19 @@ import com.enterprise.apidrift.dto.VendorConfigResponse;
 import com.enterprise.apidrift.entity.VendorConfig;
 import com.enterprise.apidrift.entity.VendorHealthStatus;
 import com.enterprise.apidrift.repository.VendorConfigRepository;
+import com.enterprise.apidrift.service.AuditLogService;
 import com.enterprise.apidrift.service.EncryptionService;
 import com.enterprise.apidrift.service.VendorHealthService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -31,6 +36,7 @@ class VendorControllerTest {
     @Mock private VendorConfigRepository vendorRepo;
     @Mock private EncryptionService encryptionService;
     @Mock private VendorHealthService healthService;
+    @Mock private AuditLogService auditLogService;
 
     @InjectMocks
     private VendorController controller;
@@ -41,22 +47,26 @@ class VendorControllerTest {
                 .createdAt(OffsetDateTime.now()).updatedAt(OffsetDateTime.now()).build();
     }
 
-    @Test @DisplayName("listAll returns all vendors")
+    @Test @DisplayName("listAll returns all vendors with pagination")
     void listAll() {
-        when(vendorRepo.findAll()).thenReturn(List.of(vendor(1L, "A"), vendor(2L, "B")));
+        List<VendorConfig> vendors = List.of(vendor(1L, "A"), vendor(2L, "B"));
+        Page<VendorConfig> page = new PageImpl<>(vendors);
+        when(vendorRepo.findAll(any(Pageable.class))).thenReturn(page);
         when(healthService.getStatus(any())).thenReturn(VendorHealthStatus.HEALTHY);
-        List<VendorConfigResponse> result = controller.listAll(null);
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getHealthStatus()).isEqualTo("HEALTHY");
+        ResponseEntity<Page<VendorConfigResponse>> result = controller.listAll(null, 0, 20);
+        assertThat(result.getBody().getContent()).hasSize(2);
+        assertThat(result.getBody().getContent().get(0).getHealthStatus()).isEqualTo("HEALTHY");
     }
 
-    @Test @DisplayName("listAll filters by tag")
+    @Test @DisplayName("listAll filters by tag with pagination")
     void listAllByTag() {
-        when(vendorRepo.findByTag("payments")).thenReturn(List.of(vendor(1L, "Stripe")));
+        List<VendorConfig> vendors = List.of(vendor(1L, "Stripe"));
+        Page<VendorConfig> page = new PageImpl<>(vendors);
+        when(vendorRepo.findByTag(eq("payments"), any(Pageable.class))).thenReturn(page);
         when(healthService.getStatus(any())).thenReturn(VendorHealthStatus.HEALTHY);
-        List<VendorConfigResponse> result = controller.listAll("payments");
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getVendorName()).isEqualTo("Stripe");
+        ResponseEntity<Page<VendorConfigResponse>> result = controller.listAll("payments", 0, 20);
+        assertThat(result.getBody().getContent()).hasSize(1);
+        assertThat(result.getBody().getContent().get(0).getVendorName()).isEqualTo("Stripe");
     }
 
     @Test @DisplayName("getById returns 200 for existing vendor")
@@ -80,16 +90,20 @@ class VendorControllerTest {
         req.setVendorName("Stripe"); req.setSpecUrl("https://s.com");
         req.setAuthToken("tok"); req.setCronExpression("0 0 * * * *"); req.setIsActive(true);
 
+        HttpServletRequest mockRequest = mock(HttpServletRequest.class);
+        when(mockRequest.getRemoteUser()).thenReturn("admin");
+        when(mockRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+
         when(vendorRepo.existsByVendorName("Stripe")).thenReturn(false);
         when(encryptionService.encrypt("tok")).thenReturn("enc");
         when(healthService.getStatus(1L)).thenReturn(VendorHealthStatus.HEALTHY);
         when(vendorRepo.save(any())).thenAnswer(inv -> {
             VendorConfig v = inv.getArgument(0);
             v.setId(1L);
-            return v;  // return the saved vendor (has encryptedAuthToken set)
+            return v;
         });
 
-        var r = controller.create(req);
+        var r = controller.create(req, mockRequest);
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(r.getBody().getVendorName()).isEqualTo("Stripe");
         assertThat(r.getBody().isAuthTokenConfigured()).isTrue();
@@ -100,7 +114,8 @@ class VendorControllerTest {
         var req = new VendorConfigRequest();
         req.setVendorName("Stripe"); req.setSpecUrl("https://s.com");
         when(vendorRepo.existsByVendorName("Stripe")).thenReturn(true);
-        assertThat(controller.create(req).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(controller.create(req, mock(HttpServletRequest.class)).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test @DisplayName("update returns 200")

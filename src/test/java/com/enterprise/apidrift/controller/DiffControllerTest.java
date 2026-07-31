@@ -4,13 +4,18 @@ import com.enterprise.apidrift.entity.*;
 import com.enterprise.apidrift.repository.ChangeFingerprintRepository;
 import com.enterprise.apidrift.repository.DiffAuditRunRepository;
 import com.enterprise.apidrift.repository.VendorConfigRepository;
+import com.enterprise.apidrift.service.AuditLogService;
 import com.enterprise.apidrift.service.IngestionOrchestrator;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
 import java.time.OffsetDateTime;
@@ -19,6 +24,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +35,7 @@ class DiffControllerTest {
     @Mock private VendorConfigRepository vendorRepo;
     @Mock private DiffAuditRunRepository auditRepo;
     @Mock private ChangeFingerprintRepository fingerprintRepo;
+    @Mock private AuditLogService auditLogService;
 
     @InjectMocks
     private DiffController controller;
@@ -39,7 +47,8 @@ class DiffControllerTest {
     @Test @DisplayName("POST trigger/{vendorId} returns 404 for missing vendor")
     void triggerNotFound() {
         when(vendorRepo.findById(99L)).thenReturn(Optional.empty());
-        assertThat(controller.triggerDiff(99L).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(controller.triggerDiff(99L, mock(HttpServletRequest.class)).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test @DisplayName("POST trigger/{vendorId} returns 200 with audit run")
@@ -53,7 +62,7 @@ class DiffControllerTest {
         when(orchestrator.runPipeline(vendor)).thenReturn(run);
         when(fingerprintRepo.findByAuditRunId(10L)).thenReturn(List.of());
 
-        var r = controller.triggerDiff(1L);
+        var r = controller.triggerDiff(1L, mock(HttpServletRequest.class));
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(r.getBody().getAuditRunId()).isEqualTo(10L);
         assertThat(r.getBody().getStatus()).isEqualTo("SUCCESS");
@@ -62,23 +71,25 @@ class DiffControllerTest {
     @Test @DisplayName("GET history/{vendorId} returns 404 for missing vendor")
     void historyNotFound() {
         when(vendorRepo.existsById(99L)).thenReturn(false);
-        assertThat(controller.getHistory(99L).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(controller.getHistory(99L, 0, 20).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    @Test @DisplayName("GET history/{vendorId} returns audit runs")
+    @Test @DisplayName("GET history/{vendorId} returns audit runs with pagination")
     void historySuccess() {
         var vendor = vendor();
         var run = DiffAuditRun.builder().id(1L).vendor(vendor)
                 .totalChanges(2).breakingChanges(1).status(RunStatus.SUCCESS)
                 .executedAt(OffsetDateTime.now()).build();
+        Page<DiffAuditRun> page = new PageImpl<>(List.of(run));
 
         when(vendorRepo.existsById(1L)).thenReturn(true);
-        when(auditRepo.findByVendorIdOrderByExecutedAtDesc(1L)).thenReturn(List.of(run));
+        when(auditRepo.findByVendorIdOrderByExecutedAtDesc(eq(1L), any(Pageable.class)))
+                .thenReturn(page);
 
-        var r = controller.getHistory(1L);
+        var r = controller.getHistory(1L, 0, 20);
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(r.getBody()).hasSize(1);
-        assertThat(r.getBody().get(0).getVendorName()).isEqualTo("Stripe");
+        assertThat(r.getBody().getContent()).hasSize(1);
+        assertThat(r.getBody().getContent().get(0).getVendorName()).isEqualTo("Stripe");
     }
 
     @Test @DisplayName("GET active/{vendorId} returns 404 for missing vendor")

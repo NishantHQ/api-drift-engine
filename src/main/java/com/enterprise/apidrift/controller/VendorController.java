@@ -5,11 +5,17 @@ import com.enterprise.apidrift.dto.VendorConfigResponse;
 import com.enterprise.apidrift.entity.VendorConfig;
 import com.enterprise.apidrift.entity.VendorHealthStatus;
 import com.enterprise.apidrift.repository.VendorConfigRepository;
+import com.enterprise.apidrift.service.AuditLogService;
 import com.enterprise.apidrift.service.EncryptionService;
 import com.enterprise.apidrift.service.VendorHealthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,19 +34,20 @@ public class VendorController {
     private final VendorConfigRepository vendorRepo;
     private final EncryptionService encryptionService;
     private final VendorHealthService healthService;
+    private final AuditLogService auditLogService;
 
     @GetMapping
-    public List<VendorConfigResponse> listAll(@RequestParam(required = false) String tag) {
+    public ResponseEntity<Page<VendorConfigResponse>> listAll(
+            @RequestParam(required = false) String tag,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "vendorName"));
         if (tag != null && !tag.isBlank()) {
-            log.info("GET /api/v1/vendors — filtered by tag '{}'", tag);
-            return vendorRepo.findByTag(tag).stream()
-                    .map(this::toResponse)
-                    .toList();
+            log.info("GET /api/v1/vendors — filtered by tag '{}', page={}, size={}", tag, page, size);
+            return ResponseEntity.ok(vendorRepo.findByTag(tag, pageable).map(this::toResponse));
         }
-        log.info("GET /api/v1/vendors — listing all vendors");
-        return vendorRepo.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+        log.info("GET /api/v1/vendors — page={}, size={}", page, size);
+        return ResponseEntity.ok(vendorRepo.findAll(pageable).map(this::toResponse));
     }
 
     @GetMapping("/{id}")
@@ -53,7 +60,8 @@ public class VendorController {
     }
 
     @PostMapping
-    public ResponseEntity<VendorConfigResponse> create(@Valid @RequestBody VendorConfigRequest request) {
+    public ResponseEntity<VendorConfigResponse> create(@Valid @RequestBody VendorConfigRequest request,
+                                                        HttpServletRequest httpRequest) {
         log.info("POST /api/v1/vendors — creating vendor '{}'", request.getVendorName());
         if (vendorRepo.existsByVendorName(request.getVendorName())) {
             log.warn("Vendor '{}' already exists — conflict", request.getVendorName());
@@ -75,6 +83,9 @@ public class VendorController {
                 .build();
 
         vendor = vendorRepo.save(vendor);
+        auditLogService.log(httpRequest.getRemoteUser(), "VENDOR_CREATED", "vendor",
+                vendor.getId(), "Created vendor '" + vendor.getVendorName() + "'",
+                httpRequest.getRemoteAddr());
         log.info("Vendor '{}' created with id={}", vendor.getVendorName(), vendor.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(vendor));
     }

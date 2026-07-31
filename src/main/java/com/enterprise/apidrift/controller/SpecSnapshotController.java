@@ -11,6 +11,10 @@ import com.enterprise.apidrift.repository.VendorConfigRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,16 +39,18 @@ public class SpecSnapshotController {
      * List all snapshots for a vendor (metadata only — no raw spec payload).
      */
     @GetMapping("/{vendorId}")
-    public ResponseEntity<List<SpecSnapshotResponse>> listByVendor(@PathVariable Long vendorId) {
-        log.info("GET /api/v1/snapshots/{}", vendorId);
+    public ResponseEntity<Page<SpecSnapshotResponse>> listByVendor(
+            @PathVariable Long vendorId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("GET /api/v1/snapshots/{} — page={}, size={}", vendorId, page, size);
         if (!vendorRepo.existsById(vendorId)) {
             return ResponseEntity.notFound().build();
         }
-        List<SpecSnapshotResponse> snapshots = snapshotRepo
-                .findByVendorIdOrderByCreatedAtDesc(vendorId)
-                .stream()
-                .map(s -> toResponse(s, false))
-                .toList();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<SpecSnapshotResponse> snapshots = snapshotRepo
+                .findByVendorIdOrderByCreatedAtDesc(vendorId, pageable)
+                .map(s -> toResponse(s, false));
         return ResponseEntity.ok(snapshots);
     }
 

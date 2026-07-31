@@ -1,6 +1,8 @@
 package com.enterprise.apidrift.engine;
 
 import com.enterprise.apidrift.service.VendorHealthService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,11 +19,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class EgressFetchServiceTest {
 
     private EgressFetchService service;
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
         // Minimal setup — only testing SSRF validation which doesn't need WebClient
-        service = new EgressFetchService(null, new VendorHealthService());
+        service = new EgressFetchService(null, new VendorHealthService(), meterRegistry);
     }
 
     @Test

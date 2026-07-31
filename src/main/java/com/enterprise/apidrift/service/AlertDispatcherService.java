@@ -4,6 +4,8 @@ import com.enterprise.apidrift.dto.AlertPayload;
 import com.enterprise.apidrift.dto.DetectedChange;
 import com.enterprise.apidrift.entity.ChangeSeverity;
 import com.enterprise.apidrift.entity.VendorConfig;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +28,8 @@ import java.util.List;
 public class AlertDispatcherService {
 
     private final WebClient webClient;
+
+    private final MeterRegistry meterRegistry;
 
     @Value("${alerts.jira.enabled:false}")
     private boolean jiraEnabled;
@@ -57,8 +61,9 @@ public class AlertDispatcherService {
     @Value("${alerts.ui-base-url:http://localhost:8080}")
     private String uiBaseUrl;
 
-    public AlertDispatcherService(WebClient.Builder webClientBuilder) {
+    public AlertDispatcherService(WebClient.Builder webClientBuilder, MeterRegistry meterRegistry) {
         this.webClient = webClientBuilder.build();
+        this.meterRegistry = meterRegistry;
     }
 
     /**
@@ -79,6 +84,16 @@ public class AlertDispatcherService {
             dispatchBatch(vendor, alertableChanges);
         } else {
             dispatchIndividually(vendor, alertableChanges);
+        }
+
+        // Record metrics
+        for (DetectedChange change : alertableChanges) {
+            Counter.builder("alerts.dispatched.total")
+                    .tag("vendor", vendor.getVendorName())
+                    .tag("severity", change.getSeverity().name())
+                    .tag("channel", "aggregated")
+                    .register(meterRegistry)
+                    .increment();
         }
     }
 
