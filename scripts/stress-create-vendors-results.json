@@ -1,0 +1,69 @@
+{
+  "target": "https://api-drift-engine.onrender.com",
+  "prefix": "stress-87ce2585",
+  "vendors_before": 0,
+  "vendors_after": 907,
+  "created": 907,
+  "errors": 93,
+  "avg_ms": 14604.8,
+  "p50_ms": 7304.5,
+  "p90_ms": 40395.7,
+  "p99_ms": 57682.2,
+  "tiers": [
+    {
+      "concurrency": 5,
+      "total": 200,
+      "ok": 200,
+      "err": 0,
+      "avg_ms": 3159.3,
+      "p50_ms": 3091.9,
+      "p90_ms": 4040.7,
+      "p99_ms": 4501.7,
+      "creations_per_sec": 0.3
+    },
+    {
+      "concurrency": 10,
+      "total": 200,
+      "ok": 200,
+      "err": 0,
+      "avg_ms": 5901.0,
+      "p50_ms": 5760.3,
+      "p90_ms": 8006.9,
+      "p99_ms": 9819.7,
+      "creations_per_sec": 0.2
+    },
+    {
+      "concurrency": 25,
+      "total": 200,
+      "ok": 200,
+      "err": 0,
+      "avg_ms": 14038.2,
+      "p50_ms": 13618.6,
+      "p90_ms": 21579.9,
+      "p99_ms": 27557.6,
+      "creations_per_sec": 0.1
+    },
+    {
+      "concurrency": 50,
+      "total": 200,
+      "ok": 200,
+      "err": 0,
+      "avg_ms": 26308.1,
+      "p50_ms": 26378.5,
+      "p90_ms": 45058.7,
+      "p99_ms": 55062.2,
+      "creations_per_sec": 0.0
+    },
+    {
+      "concurrency": 100,
+      "total": 200,
+      "ok": 107,
+      "err": 93,
+      "avg_ms": 23617.5,
+      "p50_ms": 14614.8,
+      "p90_ms": 55600.3,
+      "p99_ms": 58922.3,
+      "creations_per_sec": 0.0
+    }
+  ]
+}

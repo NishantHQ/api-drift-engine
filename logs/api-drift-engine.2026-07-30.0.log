@@ -1,0 +1,263 @@
+2026-07-30 21:23:55.803 INFO  [main] c.e.a.ApiDriftApplicationTests : Starting ApiDriftApplicationTests using Java 21.0.2 with PID 31026 (started by nishant in /Users/nishant/CODE/api-drift-engine)
+2026-07-30 21:23:55.808 DEBUG [main] c.e.a.ApiDriftApplicationTests : Running with Spring Boot v3.3.0, Spring v6.1.8
+2026-07-30 21:23:55.808 INFO  [main] c.e.a.ApiDriftApplicationTests : The following 1 profile is active: "test"
+2026-07-30 21:23:57.837 WARN  [main] org.hibernate.orm.deprecation : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-07-30 21:23:59.754 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Mock data seeding is disabled (telemetry.seed-mock-data=false)
+2026-07-30 21:23:59.849 ERROR [main] i.n.r.d.DnsServerAddressStreamProviders : Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This may result in incorrect DNS resolutions on MacOS. Check whether you have a dependency on 'io.netty:netty-resolver-dns-native-macos'. Use DEBUG level to see the full stack: java.lang.UnsatisfiedLinkError: failed to load the required native library
+2026-07-30 21:24:00.042 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:00.225 WARN  [main] o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-07-30 21:24:01.171 INFO  [main] c.e.a.ApiDriftApplicationTests : Started ApiDriftApplicationTests in 5.734 seconds (process running for 6.706)
+2026-07-30 21:24:02.090 INFO  [main] c.e.a.controller.TelemetryController : POST /api/v1/telemetry/register — service=payment-svc, vendor=1, endpoint=POST /api/pay
+2026-07-30 21:24:02.095 INFO  [main] c.e.a.controller.TelemetryController : Service dependency registered: id=1, service=payment-svc → vendor=Stripe
+2026-07-30 21:24:02.279 INFO  [main] c.e.a.controller.TelemetryController : POST /api/v1/telemetry/register — service=payment-svc, vendor=1, endpoint=POST /api/pay
+2026-07-30 21:24:02.280 DEBUG [main] c.e.a.controller.TelemetryController : Dependency already registered: service=payment-svc, vendor=1, endpoint=/api/pay
+2026-07-30 21:24:02.284 INFO  [main] c.e.a.controller.TelemetryController : DELETE /api/v1/telemetry/dependencies/1
+2026-07-30 21:24:02.284 INFO  [main] c.e.a.controller.TelemetryController : Dependency id=1 deleted
+2026-07-30 21:24:02.298 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/services/1
+2026-07-30 21:24:02.317 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=null, serviceName=null
+2026-07-30 21:24:02.324 INFO  [main] c.e.a.controller.TelemetryController : DELETE /api/v1/telemetry/dependencies/99
+2026-07-30 21:24:02.324 WARN  [main] c.e.a.controller.TelemetryController : Dependency id=99 not found for delete
+2026-07-30 21:24:02.327 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=1, serviceName=null
+2026-07-30 21:24:02.330 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=1, serviceName=svc
+2026-07-30 21:24:02.333 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=null, serviceName=payment-svc
+2026-07-30 21:24:02.336 INFO  [main] c.e.a.controller.TelemetryController : POST /api/v1/telemetry/register — service=test-svc, vendor=99, endpoint=null null
+2026-07-30 21:24:02.336 WARN  [main] c.e.a.controller.TelemetryController : Registration failed: vendor id=99 not found
+2026-07-30 21:24:02.536 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/history/1
+2026-07-30 21:24:02.540 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/history/99
+2026-07-30 21:24:02.547 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/trigger/1 — manual diff triggered
+2026-07-30 21:24:02.547 INFO  [main] c.e.a.controller.DiffController : Manual diff triggered for vendor: Stripe
+2026-07-30 21:24:02.554 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/active/99
+2026-07-30 21:24:02.556 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/resolve/99 — manual resolution
+2026-07-30 21:24:02.556 WARN  [main] c.e.a.controller.DiffController : Resolution failed: fingerprint id=99 not found
+2026-07-30 21:24:02.558 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/trigger/99 — manual diff triggered
+2026-07-30 21:24:02.559 WARN  [main] c.e.a.controller.DiffController : Trigger failed: vendor id=99 not found
+2026-07-30 21:24:02.561 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/resolve/1 — manual resolution
+2026-07-30 21:24:02.561 INFO  [main] c.e.a.controller.DiffController : Fingerprint abc resolved by unknown — no notes
+2026-07-30 21:24:02.564 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/active/1
+2026-07-30 21:24:02.644 INFO  [main] c.e.a.controller.VendorController : PUT /api/v1/vendors/99 — updating to 'X'
+2026-07-30 21:24:02.647 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/99
+2026-07-30 21:24:02.652 INFO  [main] c.e.a.controller.VendorController : POST /api/v1/vendors — creating vendor 'Stripe'
+2026-07-30 21:24:02.652 INFO  [main] c.e.a.controller.VendorController : Vendor 'Stripe' created with id=1
+2026-07-30 21:24:02.657 INFO  [main] c.e.a.controller.VendorController : POST /api/v1/vendors/1/health/reset
+2026-07-30 21:24:02.674 INFO  [main] c.e.a.controller.VendorController : PUT /api/v1/vendors/1 — updating to 'New'
+2026-07-30 21:24:02.674 INFO  [main] c.e.a.controller.VendorController : Vendor id=1 updated
+2026-07-30 21:24:02.677 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/99/health
+2026-07-30 21:24:02.679 INFO  [main] c.e.a.controller.VendorController : DELETE /api/v1/vendors/1
+2026-07-30 21:24:02.679 INFO  [main] c.e.a.controller.VendorController : Vendor id=1 deleted
+2026-07-30 21:24:02.681 INFO  [main] c.e.a.controller.VendorController : DELETE /api/v1/vendors/99
+2026-07-30 21:24:02.682 WARN  [main] c.e.a.controller.VendorController : Vendor id=99 not found for delete
+2026-07-30 21:24:02.683 INFO  [main] c.e.a.controller.VendorController : POST /api/v1/vendors — creating vendor 'Stripe'
+2026-07-30 21:24:02.684 WARN  [main] c.e.a.controller.VendorController : Vendor 'Stripe' already exists — conflict
+2026-07-30 21:24:02.685 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/1
+2026-07-30 21:24:02.688 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors — listing all vendors
+2026-07-30 21:24:02.690 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/1/health
+2026-07-30 21:24:02.708 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.711 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit closed — fetch succeeded after 1 consecutive failures
+2026-07-30 21:24:02.711 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.713 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.716 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:02.717 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.717 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:02.717 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit closed — fetch succeeded after 2 consecutive failures
+2026-07-30 21:24:02.718 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.721 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.721 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:02.721 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:02.721 WARN  [main] c.e.a.service.VendorHealthService : Vendor 2 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.722 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.722 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:02.722 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 30 min
+2026-07-30 21:24:02.724 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.724 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:02.724 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:02.724 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit closed — fetch succeeded after 3 consecutive failures
+2026-07-30 21:24:02.725 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.725 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:02.725 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:02.725 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 health state reset
+2026-07-30 21:24:02.729 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.729 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:02.729 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:02.730 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:02.740 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 0 active breaking changes across 0 vendors
+2026-07-30 21:24:02.746 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 1 active breaking changes across 1 vendors
+2026-07-30 21:24:02.749 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 3 active breaking changes across 2 vendors
+2026-07-30 21:24:02.751 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 0 active breaking changes across 0 vendors
+2026-07-30 21:24:02.754 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 0 active breaking changes across 0 vendors
+2026-07-30 21:24:02.763 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.763 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.765 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.771 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.772 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.774 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.775 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.776 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.777 ERROR [main] c.e.a.service.EncryptionService : Decryption failed: Illegal base64 character 2d
+2026-07-30 21:24:02.782 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.784 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.785 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:02.786 ERROR [main] c.e.a.service.EncryptionService : Decryption failed: Tag mismatch
+2026-07-30 21:24:02.801 DEBUG [main] c.e.a.engine.FingerprintService : Fingerprint 13d64596c0d56951de024b495b7b912546c6d214260bafcefb98c00b8063c77e already active, suppressing duplicate alert
+2026-07-30 21:24:02.802 INFO  [main] c.e.a.engine.FingerprintService : Fingerprint abc123 auto-resolved (no longer detected)
+2026-07-30 21:24:02.802 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 0 alertable
+2026-07-30 21:24:02.805 INFO  [main] c.e.a.engine.FingerprintService : Fingerprint 13d64596c0d56951de024b495b7b912546c6d214260bafcefb98c00b8063c77e RESOLVED → re-activated, alerting
+2026-07-30 21:24:02.805 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 1 alertable
+2026-07-30 21:24:02.808 INFO  [main] c.e.a.engine.FingerprintService : New fingerprint 13d64596c0d56951de024b495b7b912546c6d214260bafcefb98c00b8063c77e created, alerting
+2026-07-30 21:24:02.808 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 1 alertable
+2026-07-30 21:24:02.812 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 0 total changes, 0 alertable
+2026-07-30 21:24:02.819 INFO  [main] c.e.a.engine.FingerprintService : New fingerprint b63b7d124cde498536c7539883efdac759e51660608d64c8cc434b3e8e4a0008 created, alerting
+2026-07-30 21:24:02.819 INFO  [main] c.e.a.engine.FingerprintService : Fingerprint old-hash auto-resolved (no longer detected)
+2026-07-30 21:24:02.819 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 1 alertable
+2026-07-30 21:24:02.850 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 0 total changes, 0 breaking
+2026-07-30 21:24:02.853 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 1 breaking
+2026-07-30 21:24:02.857 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 1 breaking
+2026-07-30 21:24:02.858 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 0 breaking
+2026-07-30 21:24:02.860 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 4 total changes, 2 breaking
+2026-07-30 21:24:02.862 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 0 total changes, 0 breaking
+2026-07-30 21:24:02.864 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 2 total changes, 1 breaking
+2026-07-30 21:24:02.865 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 0 breaking
+2026-07-30 21:24:02.867 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 1 breaking
+2026-07-30 21:24:02.936 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Registered: vendor=1, endpoint=/v1/test, field=null → test-svc
+2026-07-30 21:24:02.938 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Dependency already exists: vendor=1, endpoint=/v1/charges, service=payment-service — skipping
+2026-07-30 21:24:02.939 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Registered: vendor=1, endpoint=/v1/charges, field=/requestBody/properties/amount → payment-service
+2026-07-30 21:24:02.942 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Telemetry hit: vendor=1, endpoint=/v1/charges, field=/requestBody/properties/amount → [payment-service, order-service]
+2026-07-30 21:24:02.951 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/page consumed by [payment-service] — severity escalated to CRITICAL
+2026-07-30 21:24:02.957 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/id consumed by [payment-service] — severity escalated to CRITICAL
+2026-07-30 21:24:02.963 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/id consumed by [payment-service, user-service, order-service] — severity escalated to CRITICAL
+2026-07-30 21:24:02.966 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/id not consumed — severity downgraded to LOW
+2026-07-30 21:24:03.129 DEBUG [main] c.e.a.engine.EgressFetchService : SSRF validation passed for example.com -> 172.66.147.243
+2026-07-30 21:24:43.729 INFO  [main] c.e.a.ApiDriftApplicationTests : Starting ApiDriftApplicationTests using Java 21.0.2 with PID 31229 (started by nishant in /Users/nishant/CODE/api-drift-engine)
+2026-07-30 21:24:43.730 DEBUG [main] c.e.a.ApiDriftApplicationTests : Running with Spring Boot v3.3.0, Spring v6.1.8
+2026-07-30 21:24:43.730 INFO  [main] c.e.a.ApiDriftApplicationTests : The following 1 profile is active: "test"
+2026-07-30 21:24:46.071 WARN  [main] org.hibernate.orm.deprecation : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-07-30 21:24:48.486 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Mock data seeding is disabled (telemetry.seed-mock-data=false)
+2026-07-30 21:24:48.573 ERROR [main] i.n.r.d.DnsServerAddressStreamProviders : Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This may result in incorrect DNS resolutions on MacOS. Check whether you have a dependency on 'io.netty:netty-resolver-dns-native-macos'. Use DEBUG level to see the full stack: java.lang.UnsatisfiedLinkError: failed to load the required native library
+2026-07-30 21:24:48.701 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:48.831 WARN  [main] o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-07-30 21:24:49.665 INFO  [main] c.e.a.ApiDriftApplicationTests : Started ApiDriftApplicationTests in 6.284 seconds (process running for 7.21)
+2026-07-30 21:24:50.430 INFO  [main] c.e.a.c.SpecSnapshotController : GET /api/v1/snapshots/1
+2026-07-30 21:24:50.618 INFO  [main] c.e.a.c.SpecSnapshotController : GET /api/v1/snapshots/1/99
+2026-07-30 21:24:50.622 INFO  [main] c.e.a.c.SpecSnapshotController : GET /api/v1/snapshots/1/latest
+2026-07-30 21:24:50.625 INFO  [main] c.e.a.c.SpecSnapshotController : GET /api/v1/snapshots/1/2
+2026-07-30 21:24:50.628 INFO  [main] c.e.a.c.SpecSnapshotController : GET /api/v1/snapshots/99/2
+2026-07-30 21:24:50.631 INFO  [main] c.e.a.c.SpecSnapshotController : GET /api/v1/snapshots/1/latest
+2026-07-30 21:24:50.633 INFO  [main] c.e.a.c.SpecSnapshotController : GET /api/v1/snapshots/99
+2026-07-30 21:24:50.772 INFO  [main] c.e.a.controller.TelemetryController : POST /api/v1/telemetry/register — service=payment-svc, vendor=1, endpoint=POST /api/pay
+2026-07-30 21:24:50.773 INFO  [main] c.e.a.controller.TelemetryController : Service dependency registered: id=1, service=payment-svc → vendor=Stripe
+2026-07-30 21:24:50.781 INFO  [main] c.e.a.controller.TelemetryController : POST /api/v1/telemetry/register — service=payment-svc, vendor=1, endpoint=POST /api/pay
+2026-07-30 21:24:50.781 DEBUG [main] c.e.a.controller.TelemetryController : Dependency already registered: service=payment-svc, vendor=1, endpoint=/api/pay
+2026-07-30 21:24:50.785 INFO  [main] c.e.a.controller.TelemetryController : DELETE /api/v1/telemetry/dependencies/1
+2026-07-30 21:24:50.786 INFO  [main] c.e.a.controller.TelemetryController : Dependency id=1 deleted
+2026-07-30 21:24:50.801 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/services/1
+2026-07-30 21:24:50.807 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=null, serviceName=null
+2026-07-30 21:24:50.810 INFO  [main] c.e.a.controller.TelemetryController : DELETE /api/v1/telemetry/dependencies/99
+2026-07-30 21:24:50.810 WARN  [main] c.e.a.controller.TelemetryController : Dependency id=99 not found for delete
+2026-07-30 21:24:50.812 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=1, serviceName=null
+2026-07-30 21:24:50.816 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=1, serviceName=svc
+2026-07-30 21:24:50.818 INFO  [main] c.e.a.controller.TelemetryController : GET /api/v1/telemetry/dependencies — vendorId=null, serviceName=payment-svc
+2026-07-30 21:24:50.821 INFO  [main] c.e.a.controller.TelemetryController : POST /api/v1/telemetry/register — service=test-svc, vendor=99, endpoint=null null
+2026-07-30 21:24:50.821 WARN  [main] c.e.a.controller.TelemetryController : Registration failed: vendor id=99 not found
+2026-07-30 21:24:51.023 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/history/1
+2026-07-30 21:24:51.027 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/history/99
+2026-07-30 21:24:51.034 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/trigger/1 — manual diff triggered
+2026-07-30 21:24:51.034 INFO  [main] c.e.a.controller.DiffController : Manual diff triggered for vendor: Stripe
+2026-07-30 21:24:51.041 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/active/99
+2026-07-30 21:24:51.043 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/resolve/99 — manual resolution
+2026-07-30 21:24:51.043 WARN  [main] c.e.a.controller.DiffController : Resolution failed: fingerprint id=99 not found
+2026-07-30 21:24:51.046 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/trigger/99 — manual diff triggered
+2026-07-30 21:24:51.046 WARN  [main] c.e.a.controller.DiffController : Trigger failed: vendor id=99 not found
+2026-07-30 21:24:51.048 INFO  [main] c.e.a.controller.DiffController : POST /api/v1/diffs/resolve/1 — manual resolution
+2026-07-30 21:24:51.048 INFO  [main] c.e.a.controller.DiffController : Fingerprint abc resolved by unknown — no notes
+2026-07-30 21:24:51.051 INFO  [main] c.e.a.controller.DiffController : GET /api/v1/diffs/active/1
+2026-07-30 21:24:51.134 INFO  [main] c.e.a.controller.VendorController : PUT /api/v1/vendors/99 — updating to 'X'
+2026-07-30 21:24:51.137 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/99
+2026-07-30 21:24:51.142 INFO  [main] c.e.a.controller.VendorController : POST /api/v1/vendors — creating vendor 'Stripe'
+2026-07-30 21:24:51.142 INFO  [main] c.e.a.controller.VendorController : Vendor 'Stripe' created with id=1
+2026-07-30 21:24:51.146 INFO  [main] c.e.a.controller.VendorController : POST /api/v1/vendors/1/health/reset
+2026-07-30 21:24:51.168 INFO  [main] c.e.a.controller.VendorController : PUT /api/v1/vendors/1 — updating to 'New'
+2026-07-30 21:24:51.168 INFO  [main] c.e.a.controller.VendorController : Vendor id=1 updated
+2026-07-30 21:24:51.171 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/99/health
+2026-07-30 21:24:51.173 INFO  [main] c.e.a.controller.VendorController : DELETE /api/v1/vendors/1
+2026-07-30 21:24:51.174 INFO  [main] c.e.a.controller.VendorController : Vendor id=1 deleted
+2026-07-30 21:24:51.175 INFO  [main] c.e.a.controller.VendorController : DELETE /api/v1/vendors/99
+2026-07-30 21:24:51.176 WARN  [main] c.e.a.controller.VendorController : Vendor id=99 not found for delete
+2026-07-30 21:24:51.177 INFO  [main] c.e.a.controller.VendorController : POST /api/v1/vendors — creating vendor 'Stripe'
+2026-07-30 21:24:51.178 WARN  [main] c.e.a.controller.VendorController : Vendor 'Stripe' already exists — conflict
+2026-07-30 21:24:51.180 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/1
+2026-07-30 21:24:51.181 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors — listing all vendors
+2026-07-30 21:24:51.184 INFO  [main] c.e.a.controller.VendorController : GET /api/v1/vendors/1/health
+2026-07-30 21:24:51.201 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.201 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit closed — fetch succeeded after 1 consecutive failures
+2026-07-30 21:24:51.201 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.203 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.203 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:51.204 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.204 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:51.204 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit closed — fetch succeeded after 2 consecutive failures
+2026-07-30 21:24:51.205 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.206 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.206 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:51.206 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:51.206 WARN  [main] c.e.a.service.VendorHealthService : Vendor 2 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.207 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.207 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:51.207 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 30 min
+2026-07-30 21:24:51.209 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.209 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:51.209 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:51.209 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit closed — fetch succeeded after 3 consecutive failures
+2026-07-30 21:24:51.210 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.210 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:51.210 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:51.210 INFO  [main] c.e.a.service.VendorHealthService : Vendor 1 health state reset
+2026-07-30 21:24:51.213 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.213 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 2/3 (2 total) — will retry
+2026-07-30 21:24:51.213 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 circuit OPEN — 3 consecutive fetch failures, pausing for 1 min
+2026-07-30 21:24:51.214 WARN  [main] c.e.a.service.VendorHealthService : Vendor 1 fetch failure 1/3 (1 total) — will retry
+2026-07-30 21:24:51.226 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 0 active breaking changes across 0 vendors
+2026-07-30 21:24:51.239 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 1 active breaking changes across 1 vendors
+2026-07-30 21:24:51.244 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 3 active breaking changes across 2 vendors
+2026-07-30 21:24:51.247 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 0 active breaking changes across 0 vendors
+2026-07-30 21:24:51.251 INFO  [main] c.e.a.service.DashboardService : Dashboard built: 5 vendors (3 active), 0 active breaking changes across 0 vendors
+2026-07-30 21:24:51.260 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.261 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.262 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.268 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.269 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.271 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.272 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.273 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.274 ERROR [main] c.e.a.service.EncryptionService : Decryption failed: Illegal base64 character 2d
+2026-07-30 21:24:51.279 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.280 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.281 INFO  [main] c.e.a.service.EncryptionService : Encryption service initialized with AES-256-GCM
+2026-07-30 21:24:51.282 ERROR [main] c.e.a.service.EncryptionService : Decryption failed: Tag mismatch
+2026-07-30 21:24:51.298 DEBUG [main] c.e.a.engine.FingerprintService : Fingerprint 13d64596c0d56951de024b495b7b912546c6d214260bafcefb98c00b8063c77e already active, suppressing duplicate alert
+2026-07-30 21:24:51.299 INFO  [main] c.e.a.engine.FingerprintService : Fingerprint abc123 auto-resolved (no longer detected)
+2026-07-30 21:24:51.299 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 0 alertable
+2026-07-30 21:24:51.301 INFO  [main] c.e.a.engine.FingerprintService : Fingerprint 13d64596c0d56951de024b495b7b912546c6d214260bafcefb98c00b8063c77e RESOLVED → re-activated, alerting
+2026-07-30 21:24:51.301 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 1 alertable
+2026-07-30 21:24:51.303 INFO  [main] c.e.a.engine.FingerprintService : New fingerprint 13d64596c0d56951de024b495b7b912546c6d214260bafcefb98c00b8063c77e created, alerting
+2026-07-30 21:24:51.303 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 1 alertable
+2026-07-30 21:24:51.307 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 0 total changes, 0 alertable
+2026-07-30 21:24:51.312 INFO  [main] c.e.a.engine.FingerprintService : New fingerprint b63b7d124cde498536c7539883efdac759e51660608d64c8cc434b3e8e4a0008 created, alerting
+2026-07-30 21:24:51.312 INFO  [main] c.e.a.engine.FingerprintService : Fingerprint old-hash auto-resolved (no longer detected)
+2026-07-30 21:24:51.312 INFO  [main] c.e.a.engine.FingerprintService : Dedup complete: 1 total changes, 1 alertable
+2026-07-30 21:24:51.348 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 0 total changes, 0 breaking
+2026-07-30 21:24:51.350 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 1 breaking
+2026-07-30 21:24:51.355 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 1 breaking
+2026-07-30 21:24:51.356 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 0 breaking
+2026-07-30 21:24:51.358 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 4 total changes, 2 breaking
+2026-07-30 21:24:51.359 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 0 total changes, 0 breaking
+2026-07-30 21:24:51.360 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 2 total changes, 1 breaking
+2026-07-30 21:24:51.361 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 0 breaking
+2026-07-30 21:24:51.363 INFO  [main] c.e.a.e.DirectionalCompatibilityEvaluator : Compatibility evaluation complete: 1 total changes, 1 breaking
+2026-07-30 21:24:51.433 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Registered: vendor=1, endpoint=/v1/test, field=null → test-svc
+2026-07-30 21:24:51.436 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Dependency already exists: vendor=1, endpoint=/v1/charges, service=payment-service — skipping
+2026-07-30 21:24:51.439 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Registered: vendor=1, endpoint=/v1/charges, field=/requestBody/properties/amount → payment-service
+2026-07-30 21:24:51.442 DEBUG [main] c.e.a.e.telemetry.TelemetryRegistry : Telemetry hit: vendor=1, endpoint=/v1/charges, field=/requestBody/properties/amount → [payment-service, order-service]
+2026-07-30 21:24:51.451 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/page consumed by [payment-service] — severity escalated to CRITICAL
+2026-07-30 21:24:51.453 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/id consumed by [payment-service] — severity escalated to CRITICAL
+2026-07-30 21:24:51.457 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/id consumed by [user-service, order-service, payment-service] — severity escalated to CRITICAL
+2026-07-30 21:24:51.459 INFO  [main] c.e.a.e.t.UsageCorrelationService : Change on /v1/charges//parameters/id not consumed — severity downgraded to LOW
+2026-07-30 21:24:51.469 DEBUG [main] c.e.a.engine.EgressFetchService : SSRF validation passed for example.com -> 172.66.147.243
