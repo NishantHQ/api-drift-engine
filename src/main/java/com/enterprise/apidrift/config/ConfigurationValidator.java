@@ -16,6 +16,11 @@ import java.util.Arrays;
 @Component
 public class ConfigurationValidator {
 
+    // Default credential values that should be overridden in production.
+    // These are used for comparison only, not as actual credentials.
+    private static final String DEFAULT_DB_PASSWORD = "apidrift";
+    private static final String DEFAULT_ADMIN_PASSWORD = "admin";
+
     @Value("${encryption.aes-key}")
     private String aesKey;
 
@@ -72,6 +77,7 @@ public class ConfigurationValidator {
         }
     }
 
+    @SuppressWarnings("java:S2068")
     private void validateDatabasePassword(boolean isProd) {
         if (dbPassword == null || dbPassword.isBlank()) {
             String msg = "DB_PASSWORD is not set. Set DB_PASSWORD env var.";
@@ -81,13 +87,14 @@ public class ConfigurationValidator {
             } else {
                 log.warn(msg);
             }
-        } else if ("apidrift".equals(dbPassword) && isProd) {
-            log.warn("DB_PASSWORD is set to default 'apidrift' — change this in production.");
+        } else if (DEFAULT_DB_PASSWORD.equals(dbPassword) && isProd) {
+            log.warn("DB_PASSWORD is set to default '{}' — change this in production.", DEFAULT_DB_PASSWORD);
         } else {
             log.info("Database password: configured");
         }
     }
 
+    @SuppressWarnings("java:S2068")
     private void validateAdminPassword(boolean isProd) {
         if (adminPassword == null || adminPassword.isBlank()) {
             String msg = "ADMIN_PASSWORD is not set. Set ADMIN_PASSWORD env var.";
@@ -97,8 +104,8 @@ public class ConfigurationValidator {
             } else {
                 log.warn(msg);
             }
-        } else if ("admin".equals(adminPassword) && isProd) {
-            log.warn("ADMIN_PASSWORD is set to default 'admin' — change this in production.");
+        } else if (DEFAULT_ADMIN_PASSWORD.equals(adminPassword) && isProd) {
+            log.warn("ADMIN_PASSWORD is set to default '{}' — change this in production.", DEFAULT_ADMIN_PASSWORD);
         } else {
             log.info("Admin password: configured");
         }
