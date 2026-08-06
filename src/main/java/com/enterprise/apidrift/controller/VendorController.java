@@ -132,6 +132,9 @@ public class VendorController {
     @GetMapping("/{id}/health")
     public ResponseEntity<Map<String, String>> getHealth(@PathVariable Long id) {
         log.info("GET /api/v1/vendors/{}/health", id);
+        if (id == null) {
+            return ResponseEntity.badRequest().build();
+        }
         if (!vendorRepo.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
@@ -147,6 +150,9 @@ public class VendorController {
     @PostMapping("/{id}/health/reset")
     public ResponseEntity<Map<String, String>> resetHealth(@PathVariable Long id) {
         log.info("POST /api/v1/vendors/{}/health/reset", id);
+        if (id == null) {
+            return ResponseEntity.badRequest().build();
+        }
         if (!vendorRepo.existsById(id)) {
             return ResponseEntity.notFound().build();
         }

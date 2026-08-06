@@ -12,6 +12,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,11 @@ public class IngestionOrchestrator {
 
     private final MeterRegistry meterRegistry;
 
+    // Self-injection to ensure @Transactional on runPipeline is honoured
+    // when called from runForAllActiveVendors (avoids same-class proxy bypass).
+    @Lazy
+    private final IngestionOrchestrator self;
+
     /**
      * Execute the full pipeline for all active vendors.
      */
@@ -54,7 +60,7 @@ public class IngestionOrchestrator {
         log.info("Starting ingestion pipeline for {} active vendors", activeVendors.size());
         for (VendorConfig vendor : activeVendors) {
             try {
-                runPipeline(vendor);
+                self.runPipeline(vendor);
             } catch (Exception e) {
                 log.error("Pipeline failed for vendor {}: {}", vendor.getVendorName(), e.getMessage(), e);
                 createFailedAuditRun(vendor, e.getMessage());
