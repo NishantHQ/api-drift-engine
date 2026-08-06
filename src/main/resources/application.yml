@@ -1,6 +1,10 @@
 server:
   port: 8080
 
+# CORS — restrict in production (comma-separated origins or patterns)
+cors:
+  allowed-origins: "*"
+
 spring:
   security:
     user:
