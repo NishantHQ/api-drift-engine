@@ -16,11 +16,6 @@ import java.util.Arrays;
 @Component
 public class ConfigurationValidator {
 
-    // Default credential values that should be overridden in production.
-    // These are used for comparison only, not as actual credentials.
-    private static final String DEFAULT_DB_PASSWORD = "apidrift"; // NOSONAR
-    private static final String DEFAULT_ADMIN_PASSWORD = "admin"; // NOSONAR
-
     @Value("${encryption.aes-key}")
     private String aesKey;
 
@@ -87,8 +82,8 @@ public class ConfigurationValidator {
             } else {
                 log.warn(msg);
             }
-        } else if (DEFAULT_DB_PASSWORD.equals(dbPassword) && isProd) {
-            log.warn("DB_PASSWORD is set to default '{}' — change this in production.", DEFAULT_DB_PASSWORD);
+        } else if (isProd && dbPassword.equals("apidrift")) { // NOSONAR — default check, not a credential
+            log.warn("DB_PASSWORD is set to default value — change this in production.");
         } else {
             log.info("Database password: configured");
         }
@@ -104,8 +99,8 @@ public class ConfigurationValidator {
             } else {
                 log.warn(msg);
             }
-        } else if (DEFAULT_ADMIN_PASSWORD.equals(adminPassword) && isProd) {
-            log.warn("ADMIN_PASSWORD is set to default '{}' — change this in production.", DEFAULT_ADMIN_PASSWORD);
+        } else if (isProd && adminPassword.equals("admin")) { // NOSONAR — default check, not a credential
+            log.warn("ADMIN_PASSWORD is set to default value — change this in production.");
         } else {
             log.info("Admin password: configured");
         }
