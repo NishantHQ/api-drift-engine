@@ -2,8 +2,12 @@ package com.enterprise.apidrift.engine;
 
 import com.enterprise.apidrift.config.EgressProxyProperties;
 import com.enterprise.apidrift.service.VendorHealthService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -13,6 +17,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Fetches remote OpenAPI specs through a strict egress proxy with SSRF prevention.
@@ -26,6 +31,7 @@ public class EgressFetchService {
 
     private final WebClient egressWebClient;
     private final VendorHealthService healthService;
+    private final MeterRegistry meterRegistry;
 
     private static final List<String> BLOCKED_HOSTS = Arrays.asList(
             "localhost", "127.0.0.1", "0.0.0.0", "[::1]"
@@ -42,53 +48,84 @@ public class EgressFetchService {
      * @throws RuntimeException on fetch failure after all retries exhausted
      */
     public String fetchSpec(String url, String authHeader, Long vendorId) {
-        // Circuit breaker check (skip if no vendor ID available, e.g. ad-hoc fetches)
-        if (vendorId != null && healthService.isCircuitOpen(vendorId)) {
-            throw new RuntimeException(
-                    "Circuit breaker open for vendor " + vendorId + " — skipping fetch");
-        }
+        MDC.put("targetUrl", url);
+        Timer.Sample sample = Timer.start(meterRegistry);
+        String vendorTag = vendorId != null ? String.valueOf(vendorId) : "unknown";
 
-        URI uri = URI.create(url);
-        validateTarget(uri);
+        try {
+            // Circuit breaker check (skip if no vendor ID available, e.g. ad-hoc fetches)
+            if (vendorId != null && healthService.isCircuitOpen(vendorId)) {
+                Counter.builder("fetch.requests.total")
+                        .tag("vendor", vendorTag)
+                        .tag("status", "circuit_open")
+                        .register(meterRegistry)
+                        .increment();
+                throw new RuntimeException(
+                        "Circuit breaker open for vendor " + vendorId + " — skipping fetch");
+            }
 
-        int maxRetries = healthService.getMaxRetries();
-        for (int attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                String body = doFetch(uri, authHeader);
-                if (vendorId != null) {
-                    healthService.recordSuccess(vendorId);
-                }
-                log.info("Successfully fetched spec from {} ({} bytes) on attempt {}",
-                        url, body != null ? body.length() : 0, attempt + 1);
-                return body;
-            } catch (SecurityException e) {
-                // SSRF violations are not retryable — fail immediately
-                throw e;
-            } catch (Exception e) {
-                boolean shouldRetry = vendorId != null
-                        ? healthService.recordFailure(vendorId)
-                        : attempt < maxRetries;
-                if (!shouldRetry || attempt == maxRetries) {
-                    log.error("Fetch failed for vendor {} after {} attempts: {}",
-                            vendorId, attempt + 1, e.getMessage());
-                    throw new RuntimeException(
-                            "Failed to fetch spec from " + url + " after " + (attempt + 1)
-                            + " attempts: " + e.getMessage(), e);
-                }
-                long backoffMs = healthService.getBackoffMs(attempt);
-                log.warn("Fetch attempt {}/{} for vendor {} failed: {} — retrying in {}ms",
-                        attempt + 1, maxRetries + 1, vendorId, e.getMessage(), backoffMs);
+            URI uri = URI.create(url);
+            validateTarget(uri);
+
+            int maxRetries = healthService.getMaxRetries();
+            for (int attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
-                    Thread.sleep(backoffMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Fetch interrupted during backoff", ie);
+                    String body = doFetch(uri, authHeader);
+                    if (vendorId != null) {
+                        healthService.recordSuccess(vendorId);
+                    }
+                    Counter.builder("fetch.requests.total")
+                            .tag("vendor", vendorTag)
+                            .tag("status", "success")
+                            .register(meterRegistry)
+                            .increment();
+                    log.info("Successfully fetched spec from {} ({} bytes) on attempt {}",
+                            url, body != null ? body.length() : 0, attempt + 1);
+                    return body;
+                } catch (SecurityException e) {
+                    // SSRF violations are not retryable — fail immediately
+                    Counter.builder("fetch.requests.total")
+                            .tag("vendor", vendorTag)
+                            .tag("status", "ssrf_blocked")
+                            .register(meterRegistry)
+                            .increment();
+                    throw e;
+                } catch (Exception e) {
+                    boolean shouldRetry = vendorId != null
+                            ? healthService.recordFailure(vendorId)
+                            : attempt < maxRetries;
+                    if (!shouldRetry || attempt == maxRetries) {
+                        Counter.builder("fetch.requests.total")
+                                .tag("vendor", vendorTag)
+                                .tag("status", "failure")
+                                .register(meterRegistry)
+                                .increment();
+                        log.error("Fetch failed for vendor {} after {} attempts: {}",
+                                vendorId, attempt + 1, e.getMessage());
+                        throw new RuntimeException(
+                                "Failed to fetch spec from " + url + " after " + (attempt + 1)
+                                + " attempts: " + e.getMessage(), e);
+                    }
+                    long backoffMs = healthService.getBackoffMs(attempt);
+                    log.warn("Fetch attempt {}/{} for vendor {} failed: {} — retrying in {}ms",
+                            attempt + 1, maxRetries + 1, vendorId, e.getMessage(), backoffMs);
+                    try {
+                        Thread.sleep(backoffMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Fetch interrupted during backoff", ie);
+                    }
                 }
             }
-        }
 
-        // Should never reach here
-        throw new RuntimeException("Unexpected: fetch loop exhausted for " + url);
+            // Should never reach here
+            throw new RuntimeException("Unexpected: fetch loop exhausted for " + url);
+        } finally {
+            sample.stop(Timer.builder("fetch.requests.duration")
+                    .tag("vendor", vendorTag)
+                    .register(meterRegistry));
+            MDC.remove("targetUrl");
+        }
     }
 
     /**

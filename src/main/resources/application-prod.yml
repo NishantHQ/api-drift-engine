@@ -34,18 +34,27 @@ server:
   tomcat:
     connection-timeout: 10s
 
+# CORS — restrict to your frontend origin(s) in production
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:*}  # e.g. "https://dashboard.example.com,https://admin.example.com"
+
 spring.lifecycle.timeout-per-shutdown-phase: 20s
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: when_authorized
+      show-details: always
       probes:
         enabled: true
+
+spring:
+  security:
+    user:
+      password: ${ADMIN_PASSWORD}  # Required in prod — no default
 
 logging:
   level:

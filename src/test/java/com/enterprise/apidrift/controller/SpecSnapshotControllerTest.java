@@ -11,6 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
 import java.time.OffsetDateTime;
@@ -18,6 +21,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,23 +46,25 @@ class SpecSnapshotControllerTest {
                 .createdAt(OffsetDateTime.now()).build();
     }
 
-    @Test @DisplayName("listByVendor returns snapshots without rawSpec")
+    @Test @DisplayName("listByVendor returns snapshots without rawSpec with pagination")
     void listByVendor() {
         when(vendorRepo.existsById(1L)).thenReturn(true);
-        when(snapshotRepo.findByVendorIdOrderByCreatedAtDesc(1L))
-                .thenReturn(List.of(snapshot(2L, "def"), snapshot(1L, "abc")));
+        List<SpecSnapshot> snapshots = List.of(snapshot(2L, "def"), snapshot(1L, "abc"));
+        Page<SpecSnapshot> page = new PageImpl<>(snapshots);
+        when(snapshotRepo.findByVendorIdOrderByCreatedAtDesc(eq(1L), any(Pageable.class)))
+                .thenReturn(page);
 
-        var result = controller.listByVendor(1L);
+        var result = controller.listByVendor(1L, 0, 20);
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(result.getBody()).hasSize(2);
-        assertThat(result.getBody().get(0).getRawSpec()).isNull(); // not included in list
-        assertThat(result.getBody().get(0).getContentHash()).isEqualTo("def");
+        assertThat(result.getBody().getContent()).hasSize(2);
+        assertThat(result.getBody().getContent().get(0).getRawSpec()).isNull();
+        assertThat(result.getBody().getContent().get(0).getContentHash()).isEqualTo("def");
     }
 
     @Test @DisplayName("listByVendor returns 404 for missing vendor")
     void listByVendorNotFound() {
         when(vendorRepo.existsById(99L)).thenReturn(false);
-        assertThat(controller.listByVendor(99L).getStatusCode())
+        assertThat(controller.listByVendor(99L, 0, 20).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
 

@@ -10,9 +10,15 @@ import com.enterprise.apidrift.entity.VendorConfig;
 import com.enterprise.apidrift.repository.ChangeFingerprintRepository;
 import com.enterprise.apidrift.repository.DiffAuditRunRepository;
 import com.enterprise.apidrift.repository.VendorConfigRepository;
+import com.enterprise.apidrift.service.AuditLogService;
 import com.enterprise.apidrift.service.IngestionOrchestrator;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,12 +41,14 @@ public class DiffController {
     private final VendorConfigRepository vendorRepo;
     private final DiffAuditRunRepository auditRepo;
     private final ChangeFingerprintRepository fingerprintRepo;
+    private final AuditLogService auditLogService;
 
     /**
      * Manually trigger a diff run for a specific vendor.
      */
     @PostMapping("/trigger/{vendorId}")
-    public ResponseEntity<DiffTriggerResponse> triggerDiff(@PathVariable Long vendorId) {
+    public ResponseEntity<DiffTriggerResponse> triggerDiff(@PathVariable Long vendorId,
+                                                            HttpServletRequest httpRequest) {
         log.info("POST /api/v1/diffs/trigger/{} — manual diff triggered", vendorId);
         VendorConfig vendor = vendorRepo.findById(vendorId).orElse(null);
         if (vendor == null) {
@@ -50,6 +58,9 @@ public class DiffController {
 
         log.info("Manual diff triggered for vendor: {}", vendor.getVendorName());
         DiffAuditRun auditRun = orchestrator.runPipeline(vendor);
+        auditLogService.log(httpRequest.getRemoteUser(), "DIFF_TRIGGERED", "vendor",
+                vendorId, "Manual diff triggered for " + vendor.getVendorName(),
+                httpRequest.getRemoteAddr());
 
         List<DetectedChange> changes = fingerprintRepo.findByAuditRunId(auditRun.getId())
                 .stream()
@@ -79,14 +90,18 @@ public class DiffController {
      * Get audit run history for a vendor.
      */
     @GetMapping("/history/{vendorId}")
-    public ResponseEntity<List<DiffTriggerResponse>> getHistory(@PathVariable Long vendorId) {
-        log.info("GET /api/v1/diffs/history/{}", vendorId);
+    public ResponseEntity<Page<DiffTriggerResponse>> getHistory(
+            @PathVariable Long vendorId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("GET /api/v1/diffs/history/{} — page={}, size={}", vendorId, page, size);
         if (!vendorRepo.existsById(vendorId)) {
             return ResponseEntity.notFound().build();
         }
 
-        List<DiffTriggerResponse> history = auditRepo.findByVendorIdOrderByExecutedAtDesc(vendorId)
-                .stream()
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "executedAt"));
+        Page<DiffTriggerResponse> history = auditRepo
+                .findByVendorIdOrderByExecutedAtDesc(vendorId, pageable)
                 .map(run -> DiffTriggerResponse.builder()
                         .auditRunId(run.getId())
                         .vendorName(run.getVendor().getVendorName())
@@ -94,8 +109,7 @@ public class DiffController {
                         .totalChanges(run.getTotalChanges())
                         .breakingChanges(run.getBreakingChanges())
                         .executedAt(run.getExecutedAt())
-                        .build())
-                .toList();
+                        .build());
 
         return ResponseEntity.ok(history);
     }

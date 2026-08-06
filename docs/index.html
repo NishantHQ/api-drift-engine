@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Drift Engine — Active Outbound Vendor Risk Engine</title>
+    <style>
+        :root {
+            --bg: #0a0a1a;
+            --surface: #12122a;
+            --border: #2a2a4a;
+            --text: #e0e0f0;
+            --muted: #8080a0;
+            --accent: #6c5ce7;
+            --accent-glow: #a29bfe;
+            --red: #ff6b6b;
+            --green: #51cf66;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+        header {
+            padding: 80px 0 60px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-glow), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        header p {
+            font-size: 1.25rem;
+            color: var(--muted);
+            margin-top: 16px;
+            max-width: 640px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .badges { margin-top: 24px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .badges img { height: 20px; }
+        .cta { margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            display: inline-block;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover { background: #5a4bd1; transform: translateY(-1px); }
+        .btn-secondary {
+            border: 2px solid var(--border);
+            color: var(--text);
+        }
+        .btn-secondary:hover { border-color: var(--accent); }
+        section { padding: 64px 0; }
+        section h2 {
+            font-size: 1.75rem;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+        }
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+        }
+        .feature-card h3 { font-size: 1.1rem; margin-bottom: 8px; }
+        .feature-card p { color: var(--muted); font-size: 0.95rem; }
+        .feature-icon { font-size: 1.5rem; margin-bottom: 12px; }
+        .architecture {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--muted);
+        }
+        .quickstart {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+        }
+        .quickstart code {
+            display: block;
+            background: #0a0a1a;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 8px 0 20px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th { color: var(--accent-glow); font-weight: 600; }
+        td { font-size: 0.95rem; }
+        footer {
+            text-align: center;
+            padding: 48px 0;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+        footer a { color: var(--accent-glow); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>API Drift Engine</h1>
+            <p>Active outbound vendor risk engine — polls external vendor OpenAPI specs, diffs, correlates breaking changes with internal telemetry, deduplicates alerts, and automates remediation.</p>
+            <div class="badges">
+                <img src="https://img.shields.io/badge/Java-21-blue" alt="Java 21">
+                <img src="https://img.shields.io/badge/Spring%20Boot-3.3-green" alt="Spring Boot 3.3">
+                <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT">
+                <img src="https://img.shields.io/badge/deploy-Render-46e3b7" alt="Deploy on Render">
+            </div>
+            <div class="cta">
+                <a href="https://render.com/deploy?repo=https://github.com/NishantHQ/api-drift-engine" class="btn btn-primary">Deploy to Render</a>
+                <a href="https://github.com/NishantHQ/api-drift-engine" class="btn btn-secondary">View on GitHub</a>
+                <a href="https://api-drift-engine.onrender.com/actuator/health" class="btn btn-secondary">Live Demo</a>
+            </div>
+        </div>
+    </header>
+
+    <section>
+        <div class="container">
+            <h2>Features</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">&#128269;</div>
+                    <h3>Scheduled Polling</h3>
+                    <p>Cron-based polling of vendor OpenAPI 3.0/3.1 specs. Detects changes the moment they're published.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#9888;&#65039;</div>
+                    <h3>Breaking Change Detection</h3>
+                    <p>Directional compatibility diffs with rule-based evaluation — request, response, and webhook changes.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128200;</div>
+                    <h3>Telemetry Correlation</h3>
+                    <p>Cross-references changes against internal service dependencies. Consumed endpoints get CRITICAL escalation.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128276;</div>
+                    <h3>Multi-Channel Alerts</h3>
+                    <p>Dispatch to Jira, Slack, and PagerDuty. Batch mode aggregates changes into single notifications.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128273;</div>
+                    <h3>Fingerprint Deduplication</h3>
+                    <p>SHA-256 fingerprints with state machine (NEW &rarr; ACTIVE &rarr; RESOLVED). No duplicate alerts.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128274;</div>
+                    <h3>SSRF Protection</h3>
+                    <p>Blocks loopback, link-local, and RFC 1918 ranges. AES-256-GCM encryption for vendor API tokens.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Pipeline Architecture</h2>
+            <div class="architecture">
+[Scheduled Cron / Webhook Trigger]
+             |
+             v
++----------------------------+
+|  Ingestion Worker Service  |  &lt;-- (Egress Proxy / SSRF Guard)
++-------------+--------------+
+              |  Downloads Raw Spec
+              v
++----------------------------+
+|  SHA-256 Hashing & Cache   |--&gt; (If Unchanged: Halt Execution)
++-------------+--------------+
+              |  If Changed
+              v
++----------------------------+
+|  OpenAPI 3.0/3.1 Parser    |
+|  & Dereferencing Engine    |
++-------------+--------------+
+              |  Normalized AST
+              v
++----------------------------+
+| Directional Compatibility  |
+|    & Rule Evaluation       |
++-------------+--------------+
+              |  Raw Detected Changes
+              v
++----------------------------+
+|  Usage Correlation Engine  |  &lt;-- (Telemetry Registry)
++-------------+--------------+
+              |  Impact-Weighted Diffs
+              v
++----------------------------+
+| Fingerprint Deduplication  |
+|    & Alert Dispatcher      |--&gt; [ Jira ] [ Slack ] [ PagerDuty ]
++----------------------------+
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>API Endpoints</h2>
+            <table>
+                <thead>
+                    <tr><th>Resource</th><th>Endpoints</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Vendors</td><td>GET/POST /api/v1/vendors, GET/PUT/DELETE /api/v1/vendors/{id}</td></tr>
+                    <tr><td>Diffs</td><td>POST /trigger/{id}, GET /history/{id}, GET /active/{id}, POST /resolve/{id}</td></tr>
+                    <tr><td>Snapshots</td><td>GET /{vendorId}, GET /{vendorId}/latest, GET /{vendorId}/diff</td></tr>
+                    <tr><td>Telemetry</td><td>POST /register, GET /dependencies, GET /services/{vendorId}</td></tr>
+                    <tr><td>Dashboard</td><td>GET /api/v1/dashboard</td></tr>
+                    <tr><td>Metrics</td><td>GET /actuator/prometheus, GET /actuator/health</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Quick Start</h2>
+            <div class="quickstart">
+                <p><strong>Prerequisites:</strong> Java 21, Maven 3.9+ (or Docker)</p>
+                <p style="margin-top: 16px;"><strong>Run with H2:</strong></p>
+                <code>./mvnw spring-boot:run -Dspring-boot.run.profiles=h2</code>
+                <p style="margin-top: 16px;"><strong>Register a vendor:</strong></p>
+                <code>curl -X POST http://localhost:8080/api/v1/vendors \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'admin:admin' | base64)" \
+  -d '{"vendorName":"Stripe","specUrl":"https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json","cronExpression":"0 0 */6 * * ?","isActive":true}'</code>
+                <p style="margin-top: 16px;"><strong>Trigger a diff:</strong></p>
+                <code>curl -X POST http://localhost:8080/api/v1/diffs/trigger/1 \
+  -H "Authorization: Basic $(echo -n 'admin:admin' | base64)"</code>
+                <p style="margin-top: 16px;"><a href="https://github.com/NishantHQ/api-drift-engine#readme">Full documentation &rarr;</a></p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Blog</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <h3>&#128161; Why Vendor API Changes Shouldn't Be Your Emergency</h3>
+                    <p>How automated spec diffing transforms reactive firefighting into proactive risk management.</p>
+                    <a href="blog/01-the-hidden-cost-of-api-changes.md" style="color: var(--accent-glow);">Read more &rarr;</a>
+                </div>
+                <div class="feature-card">
+                    <h3>&#128736;&#65039; Building an OpenAPI Drift Detector in Java 21</h3>
+                    <p>Deep dive into the architecture, pipeline design, SSRF prevention, and deduplication algorithm.</p>
+                    <a href="blog/02-building-an-api-drift-detection-engine.md" style="color: var(--accent-glow);">Read more &rarr;</a>
+                </div>
+                <div class="feature-card">
+                    <h3>&#128200; The Business Case for API Change Monitoring</h3>
+                    <p>Quantified impact of undetected breaking changes and the ROI of automated vendor risk monitoring.</p>
+                    <a href="blog/03-the-business-case-for-api-change-monitoring.md" style="color: var(--accent-glow);">Read more &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>API Drift Engine &mdash; MIT Licensed &mdash; <a href="https://github.com/NishantHQ/api-drift-engine">GitHub</a></p>
+        </div>
+    </footer>
+</body>
+</html>

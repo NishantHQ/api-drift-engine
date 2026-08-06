@@ -6,8 +6,13 @@ import com.enterprise.apidrift.engine.telemetry.UsageCorrelationService;
 import com.enterprise.apidrift.entity.*;
 import com.enterprise.apidrift.repository.*;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +22,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Central orchestrator that ties together the full pipeline:
@@ -39,6 +45,13 @@ public class IngestionOrchestrator {
     private final SpecSnapshotRepository snapshotRepo;
     private final DiffAuditRunRepository auditRepo;
 
+    private final MeterRegistry meterRegistry;
+
+    // Self-injection to ensure @Transactional on runPipeline is honoured
+    // when called from runForAllActiveVendors (avoids same-class proxy bypass).
+    @Lazy
+    private final IngestionOrchestrator self;
+
     /**
      * Execute the full pipeline for all active vendors.
      */
@@ -47,7 +60,7 @@ public class IngestionOrchestrator {
         log.info("Starting ingestion pipeline for {} active vendors", activeVendors.size());
         for (VendorConfig vendor : activeVendors) {
             try {
-                runPipeline(vendor);
+                self.runPipeline(vendor);
             } catch (Exception e) {
                 log.error("Pipeline failed for vendor {}: {}", vendor.getVendorName(), e.getMessage(), e);
                 createFailedAuditRun(vendor, e.getMessage());
@@ -60,89 +73,129 @@ public class IngestionOrchestrator {
      */
     @Transactional
     public DiffAuditRun runPipeline(VendorConfig vendor) {
-        log.info("=== Starting pipeline for vendor: {} ===", vendor.getVendorName());
+        MDC.put("vendorId", String.valueOf(vendor.getId()));
+        Timer.Sample sample = Timer.start(meterRegistry);
+        String status = "SUCCESS";
+        long startTime = System.currentTimeMillis();
 
-        // Step 1: Fetch remote spec (with retry + circuit breaker)
-        String authHeader = buildAuthHeader(vendor);
-        String rawSpec = fetchService.fetchSpec(vendor.getSpecUrl(), authHeader, vendor.getId());
+        try {
+            log.info("=== Starting pipeline for vendor: {} ===", vendor.getVendorName());
 
-        // Step 2: Compute SHA-256 content hash
-        String contentHash = sha256(rawSpec);
+            // Step 1: Fetch remote spec (with retry + circuit breaker)
+            String authHeader = buildAuthHeader(vendor);
+            String rawSpec = fetchService.fetchSpec(vendor.getSpecUrl(), authHeader, vendor.getId());
 
-        // Step 3: Check for changes vs. latest snapshot
-        SpecSnapshot latestSnapshot = snapshotRepo.findLatestByVendorId(vendor.getId()).orElse(null);
-        if (latestSnapshot != null && latestSnapshot.getContentHash().equals(contentHash)) {
-            log.info("NO_CHANGE_DETECTED for vendor {} (hash: {})", vendor.getVendorName(), contentHash);
-            return DiffAuditRun.builder()
+            // Step 2: Compute SHA-256 content hash
+            String contentHash = sha256(rawSpec);
+
+            // Step 3: Check for changes vs. latest snapshot
+            SpecSnapshot latestSnapshot = snapshotRepo.findLatestByVendorId(vendor.getId()).orElse(null);
+            if (latestSnapshot != null && latestSnapshot.getContentHash().equals(contentHash)) {
+                log.info("NO_CHANGE_DETECTED for vendor {} (hash: {})", vendor.getVendorName(), contentHash);
+                status = "NO_CHANGE_DETECTED";
+                Counter.builder("diff.runs.total")
+                        .tag("vendor", vendor.getVendorName())
+                        .tag("status", status)
+                        .register(meterRegistry)
+                        .increment();
+                sample.stop(Timer.builder("diff.runs.duration")
+                        .tag("vendor", vendor.getVendorName())
+                        .register(meterRegistry));
+                return DiffAuditRun.builder()
+                        .vendor(vendor)
+                        .oldSnapshot(latestSnapshot)
+                        .newSnapshot(latestSnapshot)
+                        .status(RunStatus.NO_CHANGE_DETECTED)
+                        .executedAt(OffsetDateTime.now())
+                        .build();
+            }
+
+            // Step 4: Parse & normalize
+            JsonNode normalizedSpec = normalizationService.parseAndNormalize(rawSpec);
+
+            // Step 5: Persist new snapshot
+            String specVersion = normalizedSpec.has("openapi")
+                    ? normalizedSpec.get("openapi").asText()
+                    : normalizedSpec.has("swagger") ? normalizedSpec.get("swagger").asText() : "unknown";
+
+            SpecSnapshot newSnapshot = SpecSnapshot.builder()
+                    .vendor(vendor)
+                    .contentHash(contentHash)
+                    .specVersion(specVersion)
+                    .rawSpec(rawSpec)
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+            newSnapshot = snapshotRepo.save(newSnapshot);
+
+            // Step 6: Execute directional diff
+            JsonNode oldNormalized = latestSnapshot != null
+                    ? normalizationService.parseAndNormalize(latestSnapshot.getRawSpec())
+                    : null;
+
+            List<DetectedChange> changes = compatibilityEvaluator.evaluate(
+                    oldNormalized != null ? oldNormalized : normalizedSpec,
+                    normalizedSpec);
+
+            // Step 7: Create audit run
+            DiffAuditRun auditRun = DiffAuditRun.builder()
                     .vendor(vendor)
                     .oldSnapshot(latestSnapshot)
-                    .newSnapshot(latestSnapshot)
-                    .status(RunStatus.NO_CHANGE_DETECTED)
+                    .newSnapshot(newSnapshot)
+                    .totalChanges(changes.size())
+                    .breakingChanges((int) changes.stream().filter(DetectedChange::isBreaking).count())
+                    .status(RunStatus.IN_PROGRESS)
                     .executedAt(OffsetDateTime.now())
                     .build();
+            auditRun = auditRepo.save(auditRun);
+            MDC.put("auditRunId", String.valueOf(auditRun.getId()));
+
+            // Step 8: Correlate with telemetry (adjusts severity)
+            changes = correlationService.correlateWithUsage(vendor.getId(), changes);
+
+            // Step 9: Fingerprint & deduplicate
+            List<DetectedChange> alertableChanges = fingerprintService.deduplicateAndFilter(
+                    vendor.getId(), changes, auditRun);
+
+            // Step 10: Dispatch alerts
+            alertDispatcher.dispatchAlerts(vendor, alertableChanges);
+
+            // Step 11: Update audit run status
+            auditRun.setTotalChanges(changes.size());
+            auditRun.setBreakingChanges((int) changes.stream().filter(DetectedChange::isBreaking).count());
+            auditRun.setStatus(RunStatus.SUCCESS);
+            auditRun = auditRepo.save(auditRun);
+
+            // Record metrics
+            Counter.builder("diff.changes.detected")
+                    .tag("vendor", vendor.getVendorName())
+                    .register(meterRegistry)
+                    .increment(changes.size());
+
+            log.info("=== Pipeline complete for vendor {}: {} changes, {} breaking, {} alerts ===",
+                    vendor.getVendorName(),
+                    changes.size(),
+                    changes.stream().filter(DetectedChange::isBreaking).count(),
+                    alertableChanges.size());
+
+            return auditRun;
+
+        } catch (Exception e) {
+            status = "FAILURE";
+            log.error("Pipeline failed for vendor {}: {}", vendor.getVendorName(), e.getMessage(), e);
+            createFailedAuditRun(vendor, e.getMessage());
+            throw e;
+        } finally {
+            Counter.builder("diff.runs.total")
+                    .tag("vendor", vendor.getVendorName())
+                    .tag("status", status)
+                    .register(meterRegistry)
+                    .increment();
+            sample.stop(Timer.builder("diff.runs.duration")
+                    .tag("vendor", vendor.getVendorName())
+                    .register(meterRegistry));
+            MDC.remove("vendorId");
+            MDC.remove("auditRunId");
         }
-
-        // Step 4: Parse & normalize
-        JsonNode normalizedSpec = normalizationService.parseAndNormalize(rawSpec);
-
-        // Step 5: Persist new snapshot
-        String specVersion = normalizedSpec.has("openapi")
-                ? normalizedSpec.get("openapi").asText()
-                : normalizedSpec.has("swagger") ? normalizedSpec.get("swagger").asText() : "unknown";
-
-        SpecSnapshot newSnapshot = SpecSnapshot.builder()
-                .vendor(vendor)
-                .contentHash(contentHash)
-                .specVersion(specVersion)
-                .rawSpec(rawSpec)
-                .createdAt(OffsetDateTime.now())
-                .build();
-        newSnapshot = snapshotRepo.save(newSnapshot);
-
-        // Step 6: Execute directional diff
-        JsonNode oldNormalized = latestSnapshot != null
-                ? normalizationService.parseAndNormalize(latestSnapshot.getRawSpec())
-                : null;
-
-        List<DetectedChange> changes = compatibilityEvaluator.evaluate(
-                oldNormalized != null ? oldNormalized : normalizedSpec,
-                normalizedSpec);
-
-        // Step 7: Create audit run
-        DiffAuditRun auditRun = DiffAuditRun.builder()
-                .vendor(vendor)
-                .oldSnapshot(latestSnapshot)
-                .newSnapshot(newSnapshot)
-                .totalChanges(changes.size())
-                .breakingChanges((int) changes.stream().filter(DetectedChange::isBreaking).count())
-                .status(RunStatus.IN_PROGRESS)
-                .executedAt(OffsetDateTime.now())
-                .build();
-        auditRun = auditRepo.save(auditRun);
-
-        // Step 8: Correlate with telemetry (adjusts severity)
-        changes = correlationService.correlateWithUsage(vendor.getId(), changes);
-
-        // Step 9: Fingerprint & deduplicate
-        List<DetectedChange> alertableChanges = fingerprintService.deduplicateAndFilter(
-                vendor.getId(), changes, auditRun);
-
-        // Step 10: Dispatch alerts
-        alertDispatcher.dispatchAlerts(vendor, alertableChanges);
-
-        // Step 11: Update audit run status
-        auditRun.setTotalChanges(changes.size());
-        auditRun.setBreakingChanges((int) changes.stream().filter(DetectedChange::isBreaking).count());
-        auditRun.setStatus(RunStatus.SUCCESS);
-        auditRun = auditRepo.save(auditRun);
-
-        log.info("=== Pipeline complete for vendor {}: {} changes, {} breaking, {} alerts ===",
-                vendor.getVendorName(),
-                changes.size(),
-                changes.stream().filter(DetectedChange::isBreaking).count(),
-                alertableChanges.size());
-
-        return auditRun;
     }
 
     private String buildAuthHeader(VendorConfig vendor) {
