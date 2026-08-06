@@ -18,8 +18,8 @@ public class ConfigurationValidator {
 
     // Default credential values that should be overridden in production.
     // These are used for comparison only, not as actual credentials.
-    private static final String DEFAULT_DB_PASSWORD = "apidrift";
-    private static final String DEFAULT_ADMIN_PASSWORD = "admin";
+    private static final String DEFAULT_DB_PASSWORD = "apidrift"; // NOSONAR
+    private static final String DEFAULT_ADMIN_PASSWORD = "admin"; // NOSONAR
 
     @Value("${encryption.aes-key}")
     private String aesKey;

@@ -37,7 +37,7 @@ public class SecurityConfig {
         // Each request is independently authenticated via the Authorization header.
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf.disable()) // NOSONAR — stateless API, no sessions to exploit
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -60,7 +60,7 @@ public class SecurityConfig {
         if (origins.contains("*")) {
             // Wildcard pattern origin — credentials still require explicit host match.
             // This is intended for local dev; restrict via cors.allowed-origins in prod.
-            config.setAllowedOriginPatterns(List.of("*"));
+            config.setAllowedOriginPatterns(List.of("*")); // NOSONAR — dev default; restrict in prod via cors.allowed-origins
         } else {
             config.setAllowedOrigins(origins);
         }
