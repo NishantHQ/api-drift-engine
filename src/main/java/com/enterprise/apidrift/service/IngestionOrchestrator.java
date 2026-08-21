@@ -12,7 +12,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +22,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Central orchestrator that ties together the full pipeline:
@@ -47,10 +46,7 @@ public class IngestionOrchestrator {
 
     private final MeterRegistry meterRegistry;
 
-    // Self-injection to ensure @Transactional on runPipeline is honoured
-    // when called from runForAllActiveVendors (avoids same-class proxy bypass).
-    @Lazy
-    private final IngestionOrchestrator self;
+    private final ObjectProvider<IngestionOrchestrator> selfProvider;
 
     /**
      * Execute the full pipeline for all active vendors.
@@ -60,10 +56,9 @@ public class IngestionOrchestrator {
         log.info("Starting ingestion pipeline for {} active vendors", activeVendors.size());
         for (VendorConfig vendor : activeVendors) {
             try {
-                self.runPipeline(vendor);
+                selfProvider.getObject().runPipeline(vendor);
             } catch (Exception e) {
                 log.error("Pipeline failed for vendor {}: {}", vendor.getVendorName(), e.getMessage(), e);
-                createFailedAuditRun(vendor, e.getMessage());
             }
         }
     }
@@ -76,7 +71,6 @@ public class IngestionOrchestrator {
         MDC.put("vendorId", String.valueOf(vendor.getId()));
         Timer.Sample sample = Timer.start(meterRegistry);
         String status = "SUCCESS";
-        long startTime = System.currentTimeMillis();
 
         try {
             log.info("=== Starting pipeline for vendor: {} ===", vendor.getVendorName());
@@ -101,13 +95,13 @@ public class IngestionOrchestrator {
                 sample.stop(Timer.builder("diff.runs.duration")
                         .tag("vendor", vendor.getVendorName())
                         .register(meterRegistry));
-                return DiffAuditRun.builder()
+                return auditRepo.save(DiffAuditRun.builder()
                         .vendor(vendor)
                         .oldSnapshot(latestSnapshot)
                         .newSnapshot(latestSnapshot)
                         .status(RunStatus.NO_CHANGE_DETECTED)
                         .executedAt(OffsetDateTime.now())
-                        .build();
+                        .build());
             }
 
             // Step 4: Parse & normalize
