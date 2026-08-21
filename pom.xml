@@ -20,7 +20,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <swagger-parser.version>2.1.18</swagger-parser.version>
+        <swagger-parser.version>2.1.47</swagger-parser.version>
         <openapi-diff.version>2.1.7</openapi-diff.version>
 
         <!-- SonarCloud (free for public repos — sonarcloud.io) -->
