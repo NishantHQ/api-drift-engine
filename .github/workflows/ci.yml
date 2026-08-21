@@ -148,11 +148,11 @@ jobs:
             type=ref,event=branch
             type=raw,value=latest
 
-      - name: Build image (load into local daemon, no push)
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
-          load: true
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
@@ -171,11 +171,3 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
-
-      - name: Push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
