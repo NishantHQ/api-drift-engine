@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -56,11 +57,12 @@ public class OpenApiNormalizationService {
             // Detect OpenAPI version
             String version = detectVersion(root);
 
-            // Dereference $ref pointers inline
-            root = dereferenceRefs(root, root);
-
-            // Normalize schema variations
+            // Normalize schema variations first (on the raw tree, before nodes
+            // are shared by dereferencing, since normalization mutates in place).
             root = normalizeSchemas(root, version);
+
+            // Dereference $ref pointers inline (memoized → shared DAG, read-only).
+            root = dereferenceRefs(root, root);
 
             log.info("Parsed and normalized OpenAPI {} spec", version);
             return root;
@@ -94,18 +96,23 @@ public class OpenApiNormalizationService {
     }
 
     /**
-     * Recursively dereferences $ref pointers.
+     * Recursively dereferences $ref pointers into a shared DAG.
      *
-     * A per-path {@code resolvingRefs} set detects circular $refs and leaves
-     * them unresolved instead of inlining them. Without this, a schema with
-     * multiple self-references expands exponentially (2^depth) and OOMs the
-     * JVM. The depth counter is kept as a secondary safety net.
+     * <p>{@code memo} caches each unique $ref path's resolved node so it is
+     * expanded once and reused everywhere it is referenced — memory stays
+     * ~O(unique schemas) instead of O(reference sites), which is what OOMs on
+     * large specs like Stripe/GitHub.
+     *
+     * <p>A per-path {@code resolvingRefs} set detects circular $refs and leaves
+     * them unresolved instead of inlining them. The depth counter is a secondary
+     * safety net for pathological acyclic chains.
      */
     private JsonNode dereferenceRefs(JsonNode node, JsonNode root) {
-        return dereferenceRefs(node, root, 0, new HashSet<>());
+        return dereferenceRefs(node, root, 0, new HashSet<>(), new HashMap<>());
     }
 
-    private JsonNode dereferenceRefs(JsonNode node, JsonNode root, int depth, Set<String> resolvingRefs) {
+    private JsonNode dereferenceRefs(JsonNode node, JsonNode root, int depth,
+                                     Set<String> resolvingRefs, Map<String, JsonNode> memo) {
         if (depth > 50) {
             log.warn("Max dereference depth reached; possible circular $ref");
             return node;
@@ -114,6 +121,9 @@ public class OpenApiNormalizationService {
             ObjectNode obj = (ObjectNode) node;
             if (obj.has("$ref") && obj.size() == 1) {
                 String refPath = obj.get("$ref").asText();
+                if (memo.containsKey(refPath)) {
+                    return memo.get(refPath);
+                }
                 if (resolvingRefs.contains(refPath)) {
                     // Circular $ref — leave it unresolved rather than recursing forever.
                     return node;
@@ -122,7 +132,9 @@ public class OpenApiNormalizationService {
                 if (resolved != null && !resolved.equals(node)) {
                     resolvingRefs.add(refPath);
                     try {
-                        return dereferenceRefs(resolved, root, depth + 1, resolvingRefs);
+                        JsonNode deref = dereferenceRefs(resolved, root, depth + 1, resolvingRefs, memo);
+                        memo.put(refPath, deref);
+                        return deref;
                     } finally {
                         resolvingRefs.remove(refPath);
                     }
@@ -132,7 +144,7 @@ public class OpenApiNormalizationService {
             Iterator<Map.Entry<String, JsonNode>> fields = obj.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
-                result.set(field.getKey(), dereferenceRefs(field.getValue(), root, depth, resolvingRefs));
+                result.set(field.getKey(), dereferenceRefs(field.getValue(), root, depth, resolvingRefs, memo));
             }
             return result;
         }
@@ -140,7 +152,7 @@ public class OpenApiNormalizationService {
             ArrayNode arr = (ArrayNode) node;
             ArrayNode result = jsonMapper.createArrayNode();
             for (JsonNode item : arr) {
-                result.add(dereferenceRefs(item, root, depth, resolvingRefs));
+                result.add(dereferenceRefs(item, root, depth, resolvingRefs, memo));
             }
             return result;
         }
