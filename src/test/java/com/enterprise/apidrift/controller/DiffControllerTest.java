@@ -25,6 +25,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,21 +52,17 @@ class DiffControllerTest {
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    @Test @DisplayName("POST trigger/{vendorId} returns 200 with audit run")
+    @Test @DisplayName("POST trigger/{vendorId} accepts and returns IN_PROGRESS")
     void triggerSuccess() {
         var vendor = vendor();
-        var run = DiffAuditRun.builder().id(10L).vendor(vendor)
-                .totalChanges(3).breakingChanges(1).status(RunStatus.SUCCESS)
-                .executedAt(OffsetDateTime.now()).build();
 
         when(vendorRepo.findById(1L)).thenReturn(Optional.of(vendor));
-        when(orchestrator.runPipeline(vendor)).thenReturn(run);
-        when(fingerprintRepo.findByAuditRunId(10L)).thenReturn(List.of());
+        doNothing().when(orchestrator).runPipelineAsync(vendor);
 
         var r = controller.triggerDiff(1L, mock(HttpServletRequest.class));
-        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(r.getBody().getAuditRunId()).isEqualTo(10L);
-        assertThat(r.getBody().getStatus()).isEqualTo("SUCCESS");
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(r.getBody().getStatus()).isEqualTo("IN_PROGRESS");
+        assertThat(r.getBody().getVendorName()).isEqualTo("Stripe");
     }
 
     @Test @DisplayName("GET history/{vendorId} returns 404 for missing vendor")

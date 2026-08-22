@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +62,16 @@ public class IngestionOrchestrator {
                 log.error("Pipeline failed for vendor {}: {}", vendor.getVendorName(), e.getMessage(), e);
             }
         }
+    }
+
+    /**
+     * Runs the full pipeline for a single vendor on the async executor. Used by
+     * the manual trigger endpoint so a slow poll doesn't block (and time out)
+     * the HTTP request thread.
+     */
+    @Async("taskExecutor")
+    public void runPipelineAsync(VendorConfig vendor) {
+        selfProvider.getObject().runPipeline(vendor);
     }
 
     /**
@@ -176,8 +187,7 @@ public class IngestionOrchestrator {
         } catch (Exception e) {
             status = "FAILURE";
             log.error("Pipeline failed for vendor {}: {}", vendor.getVendorName(), e.getMessage(), e);
-            createFailedAuditRun(vendor, e.getMessage());
-            throw e;
+            return createFailedAuditRun(vendor, e.getMessage());
         } finally {
             Counter.builder("diff.runs.total")
                     .tag("vendor", vendor.getVendorName())
@@ -200,7 +210,7 @@ public class IngestionOrchestrator {
         return vendor.getAuthHeaderName() + " " + token;
     }
 
-    private void createFailedAuditRun(VendorConfig vendor, String errorMessage) {
+    private DiffAuditRun createFailedAuditRun(VendorConfig vendor, String errorMessage) {
         try {
             DiffAuditRun run = DiffAuditRun.builder()
                     .vendor(vendor)
@@ -209,9 +219,10 @@ public class IngestionOrchestrator {
                     .breakingChanges(0)
                     .executedAt(OffsetDateTime.now())
                     .build();
-            auditRepo.save(run);
+            return auditRepo.save(run);
         } catch (Exception e) {
             log.error("Failed to persist failure audit run: {}", e.getMessage());
+            return null;
         }
     }
 

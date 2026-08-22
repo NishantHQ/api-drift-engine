@@ -6,6 +6,7 @@ import com.enterprise.apidrift.dto.ResolveRequest;
 import com.enterprise.apidrift.dto.VendorStatsResponse;
 import com.enterprise.apidrift.entity.ChangeFingerprint;
 import com.enterprise.apidrift.entity.DiffAuditRun;
+import com.enterprise.apidrift.entity.RunStatus;
 import com.enterprise.apidrift.entity.VendorConfig;
 import com.enterprise.apidrift.repository.ChangeFingerprintRepository;
 import com.enterprise.apidrift.repository.DiffAuditRunRepository;
@@ -57,32 +58,17 @@ public class DiffController {
         }
 
         log.info("Manual diff triggered for vendor: {}", vendor.getVendorName());
-        DiffAuditRun auditRun = orchestrator.runPipeline(vendor);
+        orchestrator.runPipelineAsync(vendor);
         auditLogService.log(httpRequest.getRemoteUser(), "DIFF_TRIGGERED", "vendor",
                 vendorId, "Manual diff triggered for " + vendor.getVendorName(),
                 httpRequest.getRemoteAddr());
 
-        List<DetectedChange> changes = fingerprintRepo.findByAuditRunId(auditRun.getId())
-                .stream()
-                .map(fp -> DetectedChange.builder()
-                        .changeType(fp.getChangeType())
-                        .severity(fp.getSeverity())
-                        .httpMethod(fp.getHttpMethod())
-                        .endpointPath(fp.getEndpointPath())
-                        .jsonPointer(fp.getJsonPointer())
-                        .description(fp.getDescription())
-                        .fingerprintHash(fp.getFingerprintHash())
-                        .build())
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(DiffTriggerResponse.builder()
-                .auditRunId(auditRun.getId())
+        return ResponseEntity.accepted().body(DiffTriggerResponse.builder()
                 .vendorName(vendor.getVendorName())
-                .status(auditRun.getStatus().name())
-                .totalChanges(auditRun.getTotalChanges())
-                .breakingChanges(auditRun.getBreakingChanges())
-                .executedAt(auditRun.getExecutedAt())
-                .changes(changes)
+                .status(RunStatus.IN_PROGRESS.name())
+                .totalChanges(0)
+                .breakingChanges(0)
+                .executedAt(OffsetDateTime.now())
                 .build());
     }
 
