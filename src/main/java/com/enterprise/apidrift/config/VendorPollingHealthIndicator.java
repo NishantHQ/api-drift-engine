@@ -65,9 +65,12 @@ public class VendorPollingHealthIndicator implements HealthIndicator {
                     detail.put("stale", false);
                 }
             } else {
+                // No diff run yet — the scheduler simply hasn't polled this
+                // vendor since registration. That's "pending", not a health
+                // failure; marking it DOWN would block the deploy health check
+                // on a fresh deploy (the vendor can't have run yet).
                 detail.put("lastRunStatus", "NEVER_RUN");
-                detail.put("stale", true);
-                allHealthy = false;
+                detail.put("stale", false);
             }
 
             vendorDetails.put("vendor-" + vendor.getId(), detail);
