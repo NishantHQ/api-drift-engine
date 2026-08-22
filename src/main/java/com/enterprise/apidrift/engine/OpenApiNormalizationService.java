@@ -15,8 +15,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Parses OpenAPI 3.0/3.1 specs (JSON/YAML), dereferences $ref components,
@@ -93,9 +95,17 @@ public class OpenApiNormalizationService {
 
     /**
      * Recursively dereferences $ref pointers.
-     * Detects circular references via a depth guard.
+     *
+     * A per-path {@code resolvingRefs} set detects circular $refs and leaves
+     * them unresolved instead of inlining them. Without this, a schema with
+     * multiple self-references expands exponentially (2^depth) and OOMs the
+     * JVM. The depth counter is kept as a secondary safety net.
      */
-    private JsonNode dereferenceRefs(JsonNode node, JsonNode root, int depth) {
+    private JsonNode dereferenceRefs(JsonNode node, JsonNode root) {
+        return dereferenceRefs(node, root, 0, new HashSet<>());
+    }
+
+    private JsonNode dereferenceRefs(JsonNode node, JsonNode root, int depth, Set<String> resolvingRefs) {
         if (depth > 50) {
             log.warn("Max dereference depth reached; possible circular $ref");
             return node;
@@ -104,16 +114,25 @@ public class OpenApiNormalizationService {
             ObjectNode obj = (ObjectNode) node;
             if (obj.has("$ref") && obj.size() == 1) {
                 String refPath = obj.get("$ref").asText();
+                if (resolvingRefs.contains(refPath)) {
+                    // Circular $ref — leave it unresolved rather than recursing forever.
+                    return node;
+                }
                 JsonNode resolved = resolveRef(refPath, root);
                 if (resolved != null && !resolved.equals(node)) {
-                    return dereferenceRefs(resolved, root, depth + 1);
+                    resolvingRefs.add(refPath);
+                    try {
+                        return dereferenceRefs(resolved, root, depth + 1, resolvingRefs);
+                    } finally {
+                        resolvingRefs.remove(refPath);
+                    }
                 }
             }
             ObjectNode result = jsonMapper.createObjectNode();
             Iterator<Map.Entry<String, JsonNode>> fields = obj.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
-                result.set(field.getKey(), dereferenceRefs(field.getValue(), root, depth));
+                result.set(field.getKey(), dereferenceRefs(field.getValue(), root, depth, resolvingRefs));
             }
             return result;
         }
@@ -121,15 +140,11 @@ public class OpenApiNormalizationService {
             ArrayNode arr = (ArrayNode) node;
             ArrayNode result = jsonMapper.createArrayNode();
             for (JsonNode item : arr) {
-                result.add(dereferenceRefs(item, root, depth));
+                result.add(dereferenceRefs(item, root, depth, resolvingRefs));
             }
             return result;
         }
         return node;
-    }
-
-    private JsonNode dereferenceRefs(JsonNode node, JsonNode root) {
-        return dereferenceRefs(node, root, 0);
     }
 
     /**
